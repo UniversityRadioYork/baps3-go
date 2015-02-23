@@ -24,7 +24,7 @@ type Connector struct {
 	logger    *log.Logger
 }
 
-// InitConnector creates and returns a Connector.
+// Creates and returns a Connector.
 // The returned Connector shall have the given name, send responses through the
 // response channel resCh, report termination via the wait group waitGroup, and
 // log to logger.
@@ -39,7 +39,8 @@ func InitConnector(name string, resCh chan string, waitGroup *sync.WaitGroup, lo
 	return c
 }
 
-// Connect connects an existing Connector to the BAPS3 server at hostport.
+// Connects an existing Connector to the BAPS3 server at hostport (in
+// the format host:port).
 func (c *Connector) Connect(hostport string) {
 	conn, err := net.Dial("tcp", hostport)
 	if err != nil {
@@ -49,7 +50,8 @@ func (c *Connector) Connect(hostport string) {
 	c.buf = bufio.NewReader(c.conn)
 }
 
-// Run sets the given Connector off running.
+// Run main connector loop, reading bytes off the wire, tokenising and handling
+// responses.
 func (c *Connector) Run() {
 	lineCh := make(chan [][]string, 3)
 	errCh := make(chan error)
