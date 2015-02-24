@@ -39,7 +39,8 @@ func InitConnector(name string, resCh chan string, waitGroup *sync.WaitGroup, lo
 	return c
 }
 
-// Connect connects an existing Connector to the BAPS3 server at hostport.
+// Connect connects an existing Connector to the BAPS3 server at hostport (in
+// the format host:port).
 func (c *Connector) Connect(hostport string) {
 	conn, err := net.Dial("tcp", hostport)
 	if err != nil {
@@ -49,7 +50,8 @@ func (c *Connector) Connect(hostport string) {
 	c.buf = bufio.NewReader(c.conn)
 }
 
-// Run sets the given Connector off running.
+// Run is the main connector loop, reading bytes off the wire, tokenising and handling
+// responses.
 func (c *Connector) Run() {
 	lineCh := make(chan [][]string, 3)
 	errCh := make(chan error)
