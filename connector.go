@@ -17,7 +17,7 @@ type Connector struct {
 	tokeniser *Tokeniser
 	conn      net.Conn
 	buf       *bufio.Reader
-	resCh     chan<- string
+	resCh     chan<- Message
 	ReqCh     chan string
 	name      string
 	wg        *sync.WaitGroup
@@ -28,7 +28,7 @@ type Connector struct {
 // The returned Connector shall have the given name, send responses through the
 // response channel resCh, report termination via the wait group waitGroup, and
 // log to logger.
-func InitConnector(name string, resCh chan string, waitGroup *sync.WaitGroup, logger *log.Logger) *Connector {
+func InitConnector(name string, resCh chan Message, waitGroup *sync.WaitGroup, logger *log.Logger) *Connector {
 	c := new(Connector)
 	c.tokeniser = NewTokeniser()
 	c.resCh = resCh
@@ -122,32 +122,7 @@ func (c *Connector) handleResponses(lines [][]string) {
 			continue
 		}
 
-		switch msg.Word() {
-		case RsTime:
-			timestr, err := msg.Arg(0)
-			if err != nil {
-				c.logger.Println(err)
-				break
-			}
-
-			time, err := time.ParseDuration(timestr + `us`)
-			if err != nil {
-				c.logger.Println(err)
-				break
-			}
-
-			c.time = time
-			c.resCh <- c.name + ": " + PrettyDuration(time)
-		case RsState:
-			statestr, err := msg.Arg(0)
-			if err != nil {
-				c.logger.Println(err)
-				break
-			}
-
-			c.state = statestr
-			c.resCh <- c.name + ": " + statestr
-		}
+		c.resCh <- *msg
 	}
 }
 
