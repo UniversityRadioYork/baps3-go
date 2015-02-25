@@ -243,3 +243,11 @@ func (m *Message) Arg(index int) (arg string, err error) {
 	}
 	return
 }
+
+func (m *Message) String() (outstr string) {
+	outstr = m.word.String()
+	for _, s := range m.args {
+		outstr += " " + s
+	}
+	return
+}
