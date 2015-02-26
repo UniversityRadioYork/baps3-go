@@ -33,6 +33,7 @@ func Pack(word string, args []string) (packed []byte, err error) {
 			return
 		}
 	}
+	output.WriteString("\n")
 
 	packed = output.Bytes()
 	return
