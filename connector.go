@@ -18,7 +18,7 @@ type Connector struct {
 	conn      net.Conn
 	buf       *bufio.Reader
 	resCh     chan<- Message
-	ReqCh     chan string
+	ReqCh     chan Message
 	name      string
 	wg        *sync.WaitGroup
 	logger    *log.Logger
@@ -32,7 +32,7 @@ func InitConnector(name string, resCh chan Message, waitGroup *sync.WaitGroup, l
 	c := new(Connector)
 	c.tokeniser = NewTokeniser()
 	c.resCh = resCh
-	c.ReqCh = make(chan string)
+	c.ReqCh = make(chan Message)
 	c.name = name
 	c.wg = waitGroup
 	c.logger = logger
@@ -81,8 +81,8 @@ func (c *Connector) Run() {
 			c.handleResponses(lines)
 		case err := <-errCh:
 			c.logger.Fatal(err)
-		case _, ok := <-c.ReqCh:
-			if !ok {
+		case req, ok := <-c.ReqCh:
+			if !ok { // Other end closed the channel, shut down
 				c.logger.Println(c.name + " Connector shutting down")
 				err := c.conn.Close()
 				if err != nil {
@@ -90,6 +90,12 @@ func (c *Connector) Run() {
 				}
 				c.wg.Done()
 				return
+			}
+			data, err := req.Pack()
+			if err != nil {
+				c.logger.Println(err)
+			} else {
+				c.conn.Write(data)
 			}
 		}
 	}
