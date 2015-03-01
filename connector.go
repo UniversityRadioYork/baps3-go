@@ -101,24 +101,10 @@ func (c *Connector) Run() {
 	}
 }
 
-// lineToMessage constructs a Message struct from a line of word-strings.
-func lineToMessage(line []string) (msg *Message, err error) {
-	if len(line) == 0 {
-		err = fmt.Errorf("cannot construct message from zero words")
-	} else {
-		msg = NewMessage(LookupWord(line[0]))
-		for _, arg := range line[1:] {
-			msg.AddArg(arg)
-		}
-	}
-
-	return
-}
-
 // handleResponses handles a series of response lines from the BAPS3 server.
 func (c *Connector) handleResponses(lines [][]string) {
 	for _, line := range lines {
-		msg, err := lineToMessage(line)
+		msg, err := LineToMessage(line)
 		if err != nil {
 			c.logger.Println(err)
 			continue

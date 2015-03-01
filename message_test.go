@@ -1,6 +1,7 @@
 package baps3
 
 import "testing"
+import "reflect"
 
 // cmpWords is defined in tokeniser_test.
 // TODO(CaptainHayashi): move cmpWords elsewhere?
@@ -97,6 +98,15 @@ func TestMessage(t *testing.T) {
 			t.Errorf("unexpected error with Arg(%d)", i)
 		} else if got != want {
 			t.Errorf("Arg(%d) = %q, want %q", i, got, want)
+		}
+	}
+
+	for _, c := range cases {
+		got, err := LineToMessage(c.words)
+		if err != nil {
+			t.Errorf("unexpected error with: %q", got)
+		} else if !reflect.DeepEqual(got, c.msg) {
+			t.Errorf("Got %q, wanted %q", got, c.msg)
 		}
 	}
 }
