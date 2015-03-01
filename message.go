@@ -251,3 +251,17 @@ func (m *Message) String() (outstr string) {
 	}
 	return
 }
+
+// lineToMessage constructs a Message struct from a line of word-strings.
+func LineToMessage(line []string) (msg *Message, err error) {
+	if len(line) == 0 {
+		err = fmt.Errorf("cannot construct message from zero words")
+	} else {
+		msg = NewMessage(LookupWord(line[0]))
+		for _, arg := range line[1:] {
+			msg.AddArg(arg)
+		}
+	}
+
+	return
+}
