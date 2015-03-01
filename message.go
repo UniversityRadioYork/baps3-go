@@ -61,6 +61,13 @@ const (
 	// RqLoad denotes a 'load' request message.
 	RqLoad
 
+	/* -- Seek feature
+	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-seek.html#requests
+	 */
+
+	// RqSeek denotes a 'seek' request message.
+	RqSeek
+
 	/* -- Playlist feature
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playlist.html#requests
 	 */
@@ -76,6 +83,13 @@ const (
 
 	// RqSelect denotes a 'select' request message.
 	RqSelect
+
+	/* -- Playlist.AutoAdvance feature
+	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-autoadvance.html#requests
+	 */
+
+	// RqAutoAdvance denotes an 'autoadvance' request message.
+	RqAutoAdvance
 
 	// - Responses
 
@@ -124,6 +138,13 @@ const (
 
 	// RsTime denotes a message with the 'TIME' response.
 	RsTime
+
+	/* -- Playlist.AutoAdvance feature
+	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-autoadvance.html#responses
+	 */
+
+	// RqAutoAdvance denotes a message with the 'AUTOADVANCE' response.
+	RsAutoAdvance
 )
 
 // Yes, a global variable.
@@ -136,10 +157,12 @@ var wordStrings = []string{
 	"stop",               // RqStop
 	"eject",              // RqEject
 	"load",               // RqLoad
+	"seek",               // RqSeek
 	"count",              // RqCount
 	"dequeue",            // RqDequeue
 	"enqueue",            // RqEnqueue
 	"select",             // RqSelect
+	"autoadvance",        // RqAutoAdvance
 	"<UNKNOWN RESPONSE>", // RsUnknown
 	"OK",                 // RsOk
 	"FAIL",               // RsFail
@@ -150,6 +173,7 @@ var wordStrings = []string{
 	"END",                // RsEnd
 	"FILE",               // RsFile
 	"TIME",               // RsTime
+	"AUTOADVANCE",        // RsAutoAdvance
 }
 
 // IsUnknown returns whether word represents a message word unknown to Bifrost.
