@@ -72,14 +72,14 @@ const (
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playlist.html#requests
 	 */
 
-	// RqCount denotes a 'count' request message.
-	RqCount
-
 	// RqDequeue denotes a 'dequeue' request message.
 	RqDequeue
 
 	// RqEnqueue denotes an 'enqueue' request message.
 	RqEnqueue
+
+	// RqList denotes a 'list' request message.
+	RqList
 
 	// RqSelect denotes a 'select' request message.
 	RqSelect
@@ -139,6 +139,25 @@ const (
 	// RsTime denotes a message with the 'TIME' response.
 	RsTime
 
+	/* -- Playlist feature
+	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playlist.html#responses
+	 */
+
+	// RsCount denotes a message with the 'COUNT' response.
+	RsCount
+
+	// RsDequeue denotes a message with the 'DEQUEUE' response.
+	RsDequeue
+
+	// RsEnqueue denotes a message with the 'ENQUEUE' response.
+	RsEnqueue
+
+	// RsItem denotes a message with the 'ITEM' response.
+	RsItem
+
+	// RsSelect denotes a message with the 'SELECT' response.
+	RsSelect
+
 	/* -- Playlist.AutoAdvance feature
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-autoadvance.html#responses
 	 */
@@ -158,9 +177,9 @@ var wordStrings = []string{
 	"eject",              // RqEject
 	"load",               // RqLoad
 	"seek",               // RqSeek
-	"count",              // RqCount
 	"dequeue",            // RqDequeue
 	"enqueue",            // RqEnqueue
+	"list",               // RqList
 	"select",             // RqSelect
 	"autoadvance",        // RqAutoAdvance
 	"<UNKNOWN RESPONSE>", // RsUnknown
@@ -173,6 +192,11 @@ var wordStrings = []string{
 	"END",                // RsEnd
 	"FILE",               // RsFile
 	"TIME",               // RsTime
+	"COUNT",              // RsCount
+	"DEQUEUE",            // RsDequeue
+	"ENQUEUE",            // RsEnqueue
+	"ITEM",               // RsItem
+	"SELECT",             // RsSelect
 	"AUTOADVANCE",        // RsAutoAdvance
 }
 
