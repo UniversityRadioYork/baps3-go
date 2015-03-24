@@ -1,5 +1,7 @@
 package baps3
 
+import "errors"
+
 // Feature is the type for known feature flags.
 type Feature int
 
@@ -64,4 +66,43 @@ func LookupFeature(word string) Feature {
 	}
 
 	return FtUnknown
+}
+
+// FeatureSet is a set of features. Go figure.
+type FeatureSet map[Feature]struct{}
+
+// FeatureSetFromMsg returns a populated FeatureSet from a RsFeatures
+func FeatureSetFromMsg(msg *Message) (fs FeatureSet, err error) {
+	if msg.Word() != RsFeatures {
+		err = errors.New("Message is not a FEATURES message")
+		return
+	}
+	fs = make(FeatureSet)
+	for _, featurestr := range msg.AsSlice()[1:] {
+		f := LookupFeature(featurestr)
+		if f == FtUnknown {
+			err = errors.New("Unknown feature: " + featurestr)
+		}
+		fs[f] = struct{}{}
+	}
+	return
+}
+
+// AddFeature adds a feature to a featureset
+func (fs FeatureSet) AddFeature(feat Feature) {
+	fs[feat] = struct{}{}
+}
+
+// DelFeature deletes a feature from a featureset
+func (fs FeatureSet) DelFeature(feat Feature) {
+	delete(fs, feat)
+}
+
+// ToMessage converts a featureset into a RsFeatures message
+func (fs FeatureSet) ToMessage() (msg *Message) {
+	msg = NewMessage(RsFeatures)
+	for f := range fs {
+		msg.AddArg(f.String())
+	}
+	return
 }
