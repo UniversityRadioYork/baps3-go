@@ -1,6 +1,9 @@
 package baps3
 
-import "errors"
+import (
+	"errors"
+	"sort"
+)
 
 // Feature is the type for known feature flags.
 type Feature int
@@ -89,20 +92,31 @@ func FeatureSetFromMsg(msg *Message) (fs FeatureSet, err error) {
 }
 
 // AddFeature adds a feature to a featureset
-func (fs FeatureSet) AddFeature(feat Feature) {
+// The given featureset is returned to enable chaining
+func (fs FeatureSet) AddFeature(feat Feature) FeatureSet {
 	fs[feat] = struct{}{}
+	return fs
 }
 
 // DelFeature deletes a feature from a featureset
-func (fs FeatureSet) DelFeature(feat Feature) {
+// The given featureset is returned to enable chaining
+func (fs FeatureSet) DelFeature(feat Feature) FeatureSet {
 	delete(fs, feat)
+	return fs
 }
 
 // ToMessage converts a featureset into a RsFeatures message
 func (fs FeatureSet) ToMessage() (msg *Message) {
-	msg = NewMessage(RsFeatures)
+	// Sort features alphabetically to make output deterministic
+	// Otherwise tests are a pain in the arse
+	var featstrings []string
 	for f := range fs {
-		msg.AddArg(f.String())
+		featstrings = append(featstrings, f.String())
+	}
+	sort.Strings(featstrings)
+	msg = NewMessage(RsFeatures)
+	for _, featstring := range featstrings {
+		msg.AddArg(featstring)
 	}
 	return
 }
