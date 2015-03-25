@@ -1,5 +1,10 @@
 package baps3
 
+import (
+	"errors"
+	"sort"
+)
+
 // Feature is the type for known feature flags.
 type Feature int
 
@@ -64,4 +69,54 @@ func LookupFeature(word string) Feature {
 	}
 
 	return FtUnknown
+}
+
+// FeatureSet is a set of features. Go figure.
+type FeatureSet map[Feature]struct{}
+
+// FeatureSetFromMsg returns a populated FeatureSet from a RsFeatures
+func FeatureSetFromMsg(msg *Message) (fs FeatureSet, err error) {
+	if msg.Word() != RsFeatures {
+		err = errors.New("Message is not a FEATURES message")
+		return
+	}
+	fs = make(FeatureSet)
+	for _, featurestr := range msg.AsSlice()[1:] {
+		f := LookupFeature(featurestr)
+		if f == FtUnknown {
+			err = errors.New("Unknown feature: " + featurestr)
+		}
+		fs[f] = struct{}{}
+	}
+	return
+}
+
+// AddFeature adds a feature to a featureset
+// The given featureset is returned to enable chaining
+func (fs FeatureSet) AddFeature(feat Feature) FeatureSet {
+	fs[feat] = struct{}{}
+	return fs
+}
+
+// DelFeature deletes a feature from a featureset
+// The given featureset is returned to enable chaining
+func (fs FeatureSet) DelFeature(feat Feature) FeatureSet {
+	delete(fs, feat)
+	return fs
+}
+
+// ToMessage converts a featureset into a RsFeatures message
+func (fs FeatureSet) ToMessage() (msg *Message) {
+	// Sort features alphabetically to make output deterministic
+	// Otherwise tests are a pain in the arse
+	var featstrings []string
+	for f := range fs {
+		featstrings = append(featstrings, f.String())
+	}
+	sort.Strings(featstrings)
+	msg = NewMessage(RsFeatures)
+	for _, featstring := range featstrings {
+		msg.AddArg(featstring)
+	}
+	return
 }
