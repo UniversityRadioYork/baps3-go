@@ -81,7 +81,7 @@ func FeatureSetFromMsg(msg *Message) (fs FeatureSet, err error) {
 		return
 	}
 	fs = make(FeatureSet)
-	for _, featurestr := range msg.AsSlice()[1:] {
+	for _, featurestr := range msg.Args() {
 		f := LookupFeature(featurestr)
 		if f == FtUnknown {
 			err = errors.New("Unknown feature: " + featurestr)

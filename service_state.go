@@ -54,14 +54,14 @@ func (s *ServiceState) Update(res Message) (err error) {
 }
 
 func (s *ServiceState) updateIdentifierFromMessage(res Message) (err error) {
-	if len(res.AsSlice()[1:]) > 1 {
+	if len(res.Args()) > 1 {
 		return fmt.Errorf("Too many arguments in %q", res)
 	}
-	if ident, ok := res.Arg(0); ok != nil {
+	if len(res.Args()) == 0 {
 		s.Identifier = ""
 		err = fmt.Errorf("No identifier present in %q", res)
 	} else {
-		s.Identifier = ident
+		s.Identifier, _ = res.Arg(0)
 	}
 	return
 }
@@ -76,7 +76,7 @@ func (s *ServiceState) updateFeaturesFromMessage(res Message) (err error) {
 
 func (s *ServiceState) updateFileFromMessage(res Message) (err error) {
 	// Expecting only one argument
-	if _, err := res.Arg(1); err == nil {
+	if len(res.Args()) > 1 {
 		return fmt.Errorf("too many arguments in %q", res)
 	}
 
@@ -93,7 +93,7 @@ func (s *ServiceState) updateFileFromMessage(res Message) (err error) {
 
 func (s *ServiceState) updateStateFromMessage(res Message) (err error) {
 	// Expecting only one argument
-	if _, err := res.Arg(1); err == nil {
+	if len(res.Args()) > 1 {
 		return fmt.Errorf("too many arguments in %q", res)
 	}
 
@@ -118,7 +118,7 @@ func (s *ServiceState) updateStateFromMessage(res Message) (err error) {
 
 func (s *ServiceState) updateTimeFromMessage(res Message) (err error) {
 	// Expecting only one argument
-	if _, err := res.Arg(1); err == nil {
+	if len(res.Args()) > 1 {
 		return fmt.Errorf("too many arguments in %q", res)
 	}
 
