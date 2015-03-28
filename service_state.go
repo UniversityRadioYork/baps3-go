@@ -14,8 +14,9 @@ import (
 // relevant to the current feature set aren't allocated?
 type ServiceState struct {
 	// Core
-	Features FeatureSet
-	State    string
+	Identifier string
+	Features   FeatureSet
+	State      string
 
 	// TimeReport
 	Time time.Duration
@@ -36,6 +37,8 @@ func InitServiceState() (s *ServiceState) {
 // Update updates a ServiceState according to an incoming service response.
 func (s *ServiceState) Update(res Message) (err error) {
 	switch res.Word() {
+	case RsOhai:
+		err = s.updateIdentifierFromMessage(res)
 	case RsFeatures:
 		err = s.updateFeaturesFromMessage(res)
 	case RsFile:
@@ -46,6 +49,19 @@ func (s *ServiceState) Update(res Message) (err error) {
 		err = s.updateTimeFromMessage(res)
 	}
 
+	return
+}
+
+func (s *ServiceState) updateIdentifierFromMessage(res Message) (err error) {
+	if len(res.AsSlice()[1:]) > 1 {
+		return fmt.Errorf("Too many arguments in %q", res)
+	}
+	if ident, ok := res.Arg(0); ok != nil {
+		s.Identifier = ""
+		err = fmt.Errorf("No identifier present in %q", res)
+	} else {
+		s.Identifier = ident
+	}
 	return
 }
 

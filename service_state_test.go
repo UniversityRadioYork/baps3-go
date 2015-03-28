@@ -152,6 +152,20 @@ func TestServiceStateUpdate(t *testing.T) {
 			},
 		},
 		{
+			NewMessage(RsOhai).AddArg("foobar-v6.9"),
+			func(s *ServiceState) (err error) {
+				if s.Identifier != "foobar-v6.9" {
+					err = fmt.Errorf(
+						"Identifier should be %s, got %s",
+						"foobar-v6.9",
+						s.Identifier,
+					)
+				}
+
+				return
+			},
+		},
+		{
 			NewMessage(RsTime).AddArg("1337000000"),
 			func(s *ServiceState) (err error) {
 				if s.Time.Seconds() != 1337 {
