@@ -69,8 +69,12 @@ func TestFeatureSetFromMsg(t *testing.T) {
 
 	for _, c := range cases {
 		got, err := FeatureSetFromMsg(c.msg)
-		if c.shoulderror && err == nil {
-			t.Errorf("FeatureSetFromMsg(%q) did not error", c.msg)
+		if c.shoulderror != (err != nil) {
+			if err != nil {
+				t.Errorf("FeatureSetFromMsg(%q) returned err when should be nil(%s)", c.msg, err.Error())
+			} else {
+				t.Errorf("FeatureSetFromMsg(%q) returned nil when should be err", c.msg)
+			}
 		}
 		if !reflect.DeepEqual(got, c.want) {
 			t.Errorf("FeatureSetFromMsg(%q) == %q, want %q", c.msg, got, c.want)
