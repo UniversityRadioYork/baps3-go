@@ -50,8 +50,7 @@ func (s *ServiceState) Update(res Message) (err error) {
 }
 
 func (s *ServiceState) updateFeaturesFromMessage(res Message) (err error) {
-	var feats FeatureSet
-	feats, err = FeatureSetFromMsg(&res)
+	feats, err := FeatureSetFromMsg(&res)
 	if err == nil {
 		s.Features = feats
 	}
