@@ -214,8 +214,8 @@ func (word MessageWord) String() string {
 }
 
 // LookupWord finds the equivalent MessageWord for a string.
-// If the message word is not known to Bifrost, it will check whether the word
-// is a valid request (all lowercase) or a valid response (all uppercase),
+// If the message word is not known, it will check whether the word is a
+// valid request (all lowercase) or a valid response (all uppercase),
 // returning RqUnknown or RsUnknown respectively.  Failing this, it will return
 // BadWord.
 func LookupWord(word string) MessageWord {
