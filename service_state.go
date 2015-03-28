@@ -14,7 +14,7 @@ import (
 // relevant to the current feature set aren't allocated?
 type ServiceState struct {
 	// Core
-	Features map[Feature]struct{}
+	Features FeatureSet
 	State    string
 
 	// TimeReport
@@ -27,7 +27,7 @@ type ServiceState struct {
 // InitServiceState creates a new, blank, ServiceState.
 func InitServiceState() (s *ServiceState) {
 	s = new(ServiceState)
-	s.Features = make(map[Feature]struct{})
+	s.Features = FeatureSet{}
 	s.State = "Ready"
 
 	return
@@ -50,23 +50,11 @@ func (s *ServiceState) Update(res Message) (err error) {
 }
 
 func (s *ServiceState) updateFeaturesFromMessage(res Message) (err error) {
-	feats := make(map[Feature]struct{})
-
-	for i := 0; ; i++ {
-		if fstring, e := res.Arg(i); e == nil {
-			feat := LookupFeature(fstring)
-			if feat == FtUnknown {
-				err = fmt.Errorf("unknown feature: %q", fstring)
-				break
-			}
-			feats[feat] = struct{}{}
-		} else {
-			// e != nil means we've run out of arguments.
-			break
-		}
+	var feats FeatureSet
+	feats, err = FeatureSetFromMsg(&res)
+	if err == nil {
+		s.Features = feats
 	}
-
-	s.Features = feats
 	return
 }
 
