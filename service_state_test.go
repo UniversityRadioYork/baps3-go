@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestHasFeature tests whether serviceState.hasFeature seems to work.
+// TestHasFeature tests whether ServiceState.hasFeature seems to work.
 func TestHasFeature(t *testing.T) {
 	cases := []struct {
 		feat    Feature
@@ -26,12 +26,12 @@ func TestHasFeature(t *testing.T) {
 	// This is for collecting the features we do want to enable.
 	presents := []Feature{}
 
-	// All features should be absent on a new serviceState.
-	srv := initServiceState()
+	// All features should be absent on a new ServiceState.
+	srv := InitServiceState()
 
 	for _, c := range cases {
-		if srv.hasFeature(c.feat) {
-			t.Errorf("initial serviceState shouldn't have feature %q", c.feat)
+		if srv.HasFeature(c.feat) {
+			t.Errorf("initial ServiceState shouldn't have feature %q", c.feat)
 		}
 		if c.present {
 			presents = append(presents, c.feat)
@@ -44,13 +44,13 @@ func TestHasFeature(t *testing.T) {
 		msg.AddArg(p.String())
 	}
 
-	if err := srv.update(*msg); err != nil {
+	if err := srv.Update(*msg); err != nil {
 		t.Errorf("error when setting features: %s", err)
 	}
 
-	// Now check if hasFeature works (!)
+	// Now check if HasFeature works (!)
 	for _, d := range cases {
-		has := srv.hasFeature(d.feat)
+		has := srv.HasFeature(d.feat)
 		if has && !d.present {
 			t.Errorf("service should not have feature %q, but does", d.feat)
 		} else if !has && d.present {
@@ -59,7 +59,7 @@ func TestHasFeature(t *testing.T) {
 	}
 }
 
-// TestServiceStateUpdateFail tests the behaviour of a serviceState when it
+// TestServiceStateUpdateFail tests the behaviour of a ServiceState when it
 // receives a malformed message.
 func TestServiceStateUpdateFail(t *testing.T) {
 	// TODO(CaptainHayashi): maybe test what the error actually is
@@ -90,7 +90,7 @@ func TestServiceStateUpdateFail(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err := initServiceState().update(*c.msg)
+		err := InitServiceState().Update(*c.msg)
 		if c.hasErr && (err == nil) {
 			t.Errorf("expected %q to produce error, none produced", c.msg)
 		} else if !c.hasErr && (err != nil) {
@@ -99,24 +99,24 @@ func TestServiceStateUpdateFail(t *testing.T) {
 	}
 }
 
-// TestServiceStateUpdate tests the updating of a serviceState by messages.
+// TestServiceStateUpdate tests the updating of a ServiceState by messages.
 func TestServiceStateUpdate(t *testing.T) {
 	// TODO(CaptainHayashi): test failure states as well as successes
 
 	cases := []struct {
 		msg *Message
-		cmp func(*serviceState) error
+		cmp func(*ServiceState) error
 	}{
 		{
 			NewMessage(RsFeatures).AddArg("End").AddArg("FileLoad"),
-			func(s *serviceState) (err error) {
-				_, endIn := s.features[FtEnd]
-				_, flIn := s.features[FtFileLoad]
+			func(s *ServiceState) (err error) {
+				_, endIn := s.Features[FtEnd]
+				_, flIn := s.Features[FtFileLoad]
 
 				if !endIn || !flIn {
 					err = fmt.Errorf(
 						"features should contain End and Fileload, got %d",
-						s.features,
+						s.Features,
 					)
 				}
 
@@ -125,12 +125,12 @@ func TestServiceStateUpdate(t *testing.T) {
 		},
 		{
 			NewMessage(RsFile).AddArg("/home/foo/bar.mp3"),
-			func(s *serviceState) (err error) {
-				if s.file != "/home/foo/bar.mp3" {
+			func(s *ServiceState) (err error) {
+				if s.File != "/home/foo/bar.mp3" {
 					err = fmt.Errorf(
 						"file should be %d, got %d",
 						"/home/foo/bar.mp3",
-						s.file,
+						s.File,
 					)
 				}
 
@@ -139,12 +139,12 @@ func TestServiceStateUpdate(t *testing.T) {
 		},
 		{
 			NewMessage(RsState).AddArg("Ejected"),
-			func(s *serviceState) (err error) {
-				if s.state != "Ejected" {
+			func(s *ServiceState) (err error) {
+				if s.State != "Ejected" {
 					err = fmt.Errorf(
 						"state should be %d, got %d",
 						"Ejected",
-						s.state,
+						s.State,
 					)
 				}
 
@@ -153,12 +153,12 @@ func TestServiceStateUpdate(t *testing.T) {
 		},
 		{
 			NewMessage(RsTime).AddArg("1337000000"),
-			func(s *serviceState) (err error) {
-				if s.time.Seconds() != 1337 {
+			func(s *ServiceState) (err error) {
+				if s.Time.Seconds() != 1337 {
 					err = fmt.Errorf(
 						"time should be %i secs, got %i",
 						1337,
-						s.time,
+						s.Time,
 					)
 				}
 
@@ -168,8 +168,8 @@ func TestServiceStateUpdate(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		st := initServiceState()
-		if err := st.update(*c.msg); err != nil {
+		st := InitServiceState()
+		if err := st.Update(*c.msg); err != nil {
 			t.Errorf("error when sending %d: %s", c.msg, err)
 		}
 		if err := c.cmp(st); err != nil {

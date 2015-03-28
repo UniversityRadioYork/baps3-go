@@ -9,32 +9,32 @@ import (
 	"time"
 )
 
-// serviceState is the struct of all known state for a BAPS3 service.
+// ServiceState is the struct of all known state for a BAPS3 service.
 // TODO(CaptainHayashi): possibly segregate more by feature, so elements not
 // relevant to the current feature set aren't allocated?
-type serviceState struct {
+type ServiceState struct {
 	// Core
-	features map[Feature]struct{}
-	state    string
+	Features map[Feature]struct{}
+	State    string
 
 	// TimeReport
-	time time.Duration
+	Time time.Duration
 
 	// FileLoad
-	file string
+	File string
 }
 
-// initServiceState creates a new, blank, serviceState.
-func initServiceState() (s *serviceState) {
-	s = new(serviceState)
-	s.features = make(map[Feature]struct{})
-	s.state = "Ready"
+// InitServiceState creates a new, blank, ServiceState.
+func InitServiceState() (s *ServiceState) {
+	s = new(ServiceState)
+	s.Features = make(map[Feature]struct{})
+	s.State = "Ready"
 
 	return
 }
 
-// update updates a serviceState according to an incoming service response.
-func (s *serviceState) update(res Message) (err error) {
+// Update updates a ServiceState according to an incoming service response.
+func (s *ServiceState) Update(res Message) (err error) {
 	switch res.Word() {
 	case RsFeatures:
 		err = s.updateFeaturesFromMessage(res)
@@ -49,7 +49,7 @@ func (s *serviceState) update(res Message) (err error) {
 	return
 }
 
-func (s *serviceState) updateFeaturesFromMessage(res Message) (err error) {
+func (s *ServiceState) updateFeaturesFromMessage(res Message) (err error) {
 	feats := make(map[Feature]struct{})
 
 	for i := 0; ; i++ {
@@ -66,11 +66,11 @@ func (s *serviceState) updateFeaturesFromMessage(res Message) (err error) {
 		}
 	}
 
-	s.features = feats
+	s.Features = feats
 	return
 }
 
-func (s *serviceState) updateFileFromMessage(res Message) (err error) {
+func (s *ServiceState) updateFileFromMessage(res Message) (err error) {
 	// Expecting only one argument
 	if _, err := res.Arg(1); err == nil {
 		return fmt.Errorf("too many arguments in %q", res)
@@ -78,16 +78,16 @@ func (s *serviceState) updateFileFromMessage(res Message) (err error) {
 
 	file, err := res.Arg(0)
 	if err != nil {
-		s.file = ""
+		s.File = ""
 		return
 	}
 
-	s.file = file
+	s.File = file
 
 	return
 }
 
-func (s *serviceState) updateStateFromMessage(res Message) (err error) {
+func (s *ServiceState) updateStateFromMessage(res Message) (err error) {
 	// Expecting only one argument
 	if _, err := res.Arg(1); err == nil {
 		return fmt.Errorf("too many arguments in %q", res)
@@ -98,16 +98,16 @@ func (s *serviceState) updateStateFromMessage(res Message) (err error) {
 		// TODO(CaptainHayashi): "Ready" is currently the most
 		// valid fallback value in the spec.  Does the spec
 		// need an 'I don't know what the state is' value?
-		s.state = "Ready"
+		s.State = "Ready"
 		return
 	}
 
-	s.state = state
+	s.State = state
 
 	return
 }
 
-func (s *serviceState) updateTimeFromMessage(res Message) (err error) {
+func (s *ServiceState) updateTimeFromMessage(res Message) (err error) {
 	// Expecting only one argument
 	if _, err := res.Arg(1); err == nil {
 		return fmt.Errorf("too many arguments in %q", res)
@@ -123,13 +123,13 @@ func (s *serviceState) updateTimeFromMessage(res Message) (err error) {
 		return
 	}
 
-	s.time = time.Duration(usec) * time.Microsecond
+	s.Time = time.Duration(usec) * time.Microsecond
 
 	return
 }
 
-// hasFeature returns whether the connected server advertises the given feature.
-func (s *serviceState) hasFeature(f Feature) bool {
-	_, ok := s.features[f]
+// HasFeature returns whether the connected server advertises the given feature.
+func (s *ServiceState) HasFeature(f Feature) bool {
+	_, ok := s.Features[f]
 	return ok
 }
