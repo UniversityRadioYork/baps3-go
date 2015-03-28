@@ -41,6 +41,9 @@ const (
 	// RqQuit denotes a 'quit' request message.
 	RqQuit
 
+	// RqDump denotes a 'dump' request message.
+	RqDump
+
 	/* -- PlayStop feature
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playstop.html#requests
 	 */
@@ -172,6 +175,7 @@ var wordStrings = []string{
 	"<BAD WORD>",         // BadWord
 	"<UNKNOWN REQUEST>",  // RqUnknown
 	"quit",               // RqQuit
+	"dump",               // RqDump
 	"play",               // RqPlay
 	"stop",               // RqStop
 	"eject",              // RqEject
@@ -210,8 +214,8 @@ func (word MessageWord) String() string {
 }
 
 // LookupWord finds the equivalent MessageWord for a string.
-// If the message word is not known to Bifrost, it will check whether the word
-// is a valid request (all lowercase) or a valid response (all uppercase),
+// If the message word is not known, it will check whether the word is a
+// valid request (all lowercase) or a valid response (all uppercase),
 // returning RqUnknown or RsUnknown respectively.  Failing this, it will return
 // BadWord.
 func LookupWord(word string) MessageWord {
@@ -276,6 +280,11 @@ func (m *Message) Pack() ([]byte, error) {
 // Word returns the MessageWord of the given Message.
 func (m *Message) Word() MessageWord {
 	return m.word
+}
+
+// Args returns the slice of Arguments.
+func (m *Message) Args() []string {
+	return m.args
 }
 
 // Arg returns the index-th argument of the given Message.
