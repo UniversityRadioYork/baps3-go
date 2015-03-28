@@ -41,6 +41,9 @@ const (
 	// RqQuit denotes a 'quit' request message.
 	RqQuit
 
+	// RqDump denotes a 'dump' request message.
+	RqDump
+
 	/* -- PlayStop feature
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playstop.html#requests
 	 */
@@ -172,6 +175,7 @@ var wordStrings = []string{
 	"<BAD WORD>",         // BadWord
 	"<UNKNOWN REQUEST>",  // RqUnknown
 	"quit",               // RqQuit
+	"dump",               // RqDump
 	"play",               // RqPlay
 	"stop",               // RqStop
 	"eject",              // RqEject
