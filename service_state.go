@@ -34,19 +34,20 @@ func InitServiceState() (s *ServiceState) {
 	return
 }
 
+// Maps response word to a handler function to update servicestate
+var updateFunctionForResponse = map[MessageWord]func(*ServiceState, Message) error{
+	RsOhai:     (*ServiceState).updateIdentifierFromMessage,
+	RsFeatures: (*ServiceState).updateFeaturesFromMessage,
+	RsFile:     (*ServiceState).updateFileFromMessage,
+	RsState:    (*ServiceState).updateStateFromMessage,
+	RsTime:     (*ServiceState).updateTimeFromMessage,
+}
+
 // Update updates a ServiceState according to an incoming service response.
 func (s *ServiceState) Update(res Message) (err error) {
-	switch res.Word() {
-	case RsOhai:
-		err = s.updateIdentifierFromMessage(res)
-	case RsFeatures:
-		err = s.updateFeaturesFromMessage(res)
-	case RsFile:
-		err = s.updateFileFromMessage(res)
-	case RsState:
-		err = s.updateStateFromMessage(res)
-	case RsTime:
-		err = s.updateTimeFromMessage(res)
+	updateFunc, ok := updateFunctionForResponse[res.Word()]
+	if ok {
+		err = updateFunc(s, res)
 	}
 
 	return
