@@ -16,7 +16,7 @@ type ServiceState struct {
 	// Core
 	Identifier string
 	Features   FeatureSet
-	State      string
+	State      State
 
 	// TimeReport
 	Time time.Duration
@@ -29,7 +29,7 @@ type ServiceState struct {
 func InitServiceState() (s *ServiceState) {
 	s = new(ServiceState)
 	s.Features = FeatureSet{}
-	s.State = "Ready"
+	s.State = StReady
 
 	return
 }
@@ -96,15 +96,20 @@ func (s *ServiceState) updateStateFromMessage(res Message) (err error) {
 		return fmt.Errorf("too many arguments in %q", res)
 	}
 
-	state, err := res.Arg(0)
+	statestr, err := res.Arg(0)
 	if err != nil {
 		// TODO(CaptainHayashi): "Ready" is currently the most
 		// valid fallback value in the spec.  Does the spec
 		// need an 'I don't know what the state is' value?
-		s.State = "Ready"
+		s.State = StReady
 		return
 	}
 
+	state, err := LookupState(statestr)
+	if err != nil {
+		s.State = StReady // TODO(wlcx): see above todo
+		return
+	}
 	s.State = state
 
 	return

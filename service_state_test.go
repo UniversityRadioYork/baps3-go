@@ -140,7 +140,7 @@ func TestServiceStateUpdate(t *testing.T) {
 		{
 			NewMessage(RsState).AddArg("Ejected"),
 			func(s *ServiceState) (err error) {
-				if s.State != "Ejected" {
+				if s.State != StEjected {
 					err = fmt.Errorf(
 						"state should be %d, got %d",
 						"Ejected",
