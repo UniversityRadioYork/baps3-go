@@ -282,6 +282,11 @@ func (m *Message) Word() MessageWord {
 	return m.word
 }
 
+// Args returns the slice of Arguments.
+func (m *Message) Args() []string {
+	return m.args
+}
+
 // Arg returns the index-th argument of the given Message.
 // The first argument is argument 0.
 // If the argument does not exist, an error is returned via err.
