@@ -204,9 +204,14 @@ var wordStrings = []string{
 	"AUTOADVANCE",        // RsAutoAdvance
 }
 
-// IsUnknown returns whether word represents a message word unknown to Bifrost.
+// IsUnknown returns whether word represents an unknown message word.
 func (word MessageWord) IsUnknown() bool {
 	return word == BadWord || word == RqUnknown || word == RsUnknown
+}
+
+// IsCommandResponse returns whether word respresents is a "personal" response.
+func (word MessageWord) IsCommandResponse() bool {
+	return word == RsOk || word == RsFail || word == RsWhat
 }
 
 func (word MessageWord) String() string {
