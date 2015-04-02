@@ -11,17 +11,22 @@ func TestMessageWord(t *testing.T) {
 		str     string
 		word    MessageWord
 		unknown bool
+		cmdResp bool
 	}{
 		// Ok, a request
-		{"load", RqLoad, false},
+		{"load", RqLoad, false, false},
 		// Ok, a response
-		{"OHAI", RsOhai, false},
+		{"OHAI", RsOhai, false, false},
+		// Ok, an OK response
+		{"OK", RsOk, false, true},
+		// Ok, a WHAT response
+		{"WHAT", RsWhat, false, true},
 		// Unknown, but a request
-		{"uwot", RqUnknown, true},
+		{"uwot", RqUnknown, true, false},
 		// Unknown, but a response
-		{"MATE", RsUnknown, true},
+		{"MATE", RsUnknown, true, false},
 		// Unknown, and unclear what type of message
-		{"MaTe", BadWord, true},
+		{"MaTe", BadWord, true, false},
 	}
 
 	for _, c := range cases {
@@ -31,6 +36,9 @@ func TestMessageWord(t *testing.T) {
 		}
 		if c.word.IsUnknown() != c.unknown {
 			t.Errorf("%q.IsUnknown() == %q, want %q", c.word, !c.unknown, c.unknown)
+		}
+		if c.word.IsCommandResponse() != c.cmdResp {
+			t.Errorf("%q.IsCommandResponse() == %q, want %q", c.word, !c.cmdResp, c.cmdResp)
 		}
 
 		// Only do the other direction if it's a valid response
