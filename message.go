@@ -37,6 +37,15 @@ const (
 	/* -- Core
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/core.html#requests
 	 */
+	 
+	// RqRead denotes a 'read' request message.
+	RqRead
+
+	// RqWrite denotes a 'write' request message.
+	RqWrite
+
+	// RqDelete denotes a 'delete' request message.
+	RqDelete
 
 	// RqQuit denotes a 'quit' request message.
 	RqQuit
@@ -102,6 +111,12 @@ const (
 	/* -- Core
 	 * http://universityradioyork.github.io/baps3-spec/comms/internal/core.html#responses
 	 */
+	 
+	// RsRes denotes a message with the 'RES' response.
+	RsRes
+	
+	// RsAck denotes a message with the 'ACK' response.
+	RsAck
 
 	// RsOk denotes a message with the 'OK' response.
 	RsOk
@@ -174,6 +189,9 @@ const (
 var wordStrings = []string{
 	"<BAD WORD>",         // BadWord
 	"<UNKNOWN REQUEST>",  // RqUnknown
+	"read",               // RqRead
+	"write",              // RqWrite
+	"delete",             // RqDelete
 	"quit",               // RqQuit
 	"dump",               // RqDump
 	"play",               // RqPlay
@@ -187,6 +205,8 @@ var wordStrings = []string{
 	"select",             // RqSelect
 	"autoadvance",        // RqAutoAdvance
 	"<UNKNOWN RESPONSE>", // RsUnknown
+	"RES",                // RsRes
+	"ACK",                // RsAck
 	"OK",                 // RsOk
 	"FAIL",               // RsFail
 	"WHAT",               // RsWhat
