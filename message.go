@@ -13,18 +13,18 @@ import (
 type MessageWord int
 
 const (
-	/* Message word constants.
-	 *
-	 * When adding to this, also add the string equivalent to LookupRequest and
-	 * LookupResponse.
-	 *
-	 * Also note that the use of the same iota-run of numbers for requests,
-	 * responses and errors is intentional, because all three series of
-	 * message are conveyed in the same struct, parsed by the same
-	 * functions, and consequently the message word is referenced by code
-	 * with no understanding of whether the word pertains to a request, a
-	 * response, or something completely different.
-	 */
+	// Message word constants.
+	//
+	// When adding to this, also add the string equivalent to LookupRequest and
+	// LookupResponse.
+	//
+	// Also note that the use of the same iota-run of numbers for requests,
+	// responses and errors is intentional, because all three series of
+	// message are conveyed in the same struct, parsed by the same
+	// functions, and consequently the message word is referenced by code
+	// with no understanding of whether the word pertains to a request, a
+	// response, or something completely different.
+	//
 
 	// BadWord denotes a message with an unknown and ill-formed word.
 	BadWord MessageWord = iota
@@ -34,10 +34,6 @@ const (
 	// RqUnknown denotes a message with an unknown but valid request word.
 	RqUnknown
 
-	/* -- Core
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/core.html#requests
-	 */
-	 
 	// RqRead denotes a 'read' request message.
 	RqRead
 
@@ -47,141 +43,19 @@ const (
 	// RqDelete denotes a 'delete' request message.
 	RqDelete
 
-	// RqQuit denotes a 'quit' request message.
-	RqQuit
-
-	// RqDump denotes a 'dump' request message.
-	RqDump
-
-	/* -- PlayStop feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playstop.html#requests
-	 */
-
-	// RqPlay denotes a 'play' request message.
-	RqPlay
-
-	// RqStop denotes a 'stop' request message.
-	RqStop
-
-	/* -- FileLoad feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-fileload.html#requests
-	 */
-
-	// RqEject denotes an 'eject' request message.
-	RqEject
-
-	// RqLoad denotes a 'load' request message.
-	RqLoad
-
-	/* -- Seek feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-seek.html#requests
-	 */
-
-	// RqSeek denotes a 'seek' request message.
-	RqSeek
-
-	/* -- Playlist feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playlist.html#requests
-	 */
-
-	// RqDequeue denotes a 'dequeue' request message.
-	RqDequeue
-
-	// RqEnqueue denotes an 'enqueue' request message.
-	RqEnqueue
-
-	// RqList denotes a 'list' request message.
-	RqList
-
-	// RqSelect denotes a 'select' request message.
-	RqSelect
-
-	/* -- Playlist.AutoAdvance feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-autoadvance.html#requests
-	 */
-
-	// RqAutoAdvance denotes an 'autoadvance' request message.
-	RqAutoAdvance
-
 	// - Responses
 
 	// RsUnknown denotes a message with an unknown but valid response word.
 	RsUnknown
 
-	/* -- Core
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/core.html#responses
-	 */
-	 
 	// RsRes denotes a message with the 'RES' response.
 	RsRes
-	
+
 	// RsAck denotes a message with the 'ACK' response.
 	RsAck
 
-	// RsOk denotes a message with the 'OK' response.
-	RsOk
-
-	// RsFail denotes a message with the 'FAIL' response.
-	RsFail
-
-	// RsWhat denotes a message with the 'WHAT' response.
-	RsWhat
-
 	// RsOhai denotes a message with the 'OHAI' response.
 	RsOhai
-
-	// RsFeatures denotes a message with the 'FEATURES' response.
-	RsFeatures
-
-	// RsState denotes a message with the 'STATE' response.
-	RsState
-
-	/* -- End feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-end.html#responses
-	 */
-
-	// RsEnd denotes a message with the 'END' response.
-	RsEnd
-
-	/* -- FileLoad feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-fileload.html#responses
-	 */
-
-	// RsFile denotes a message with the 'FILE' response.
-	RsFile
-
-	/* -- TimeReport feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-timereport.html#responses
-	 */
-
-	// RsTime denotes a message with the 'TIME' response.
-	RsTime
-
-	/* -- Playlist feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-playlist.html#responses
-	 */
-
-	// RsCount denotes a message with the 'COUNT' response.
-	RsCount
-
-	// RsDequeue denotes a message with the 'DEQUEUE' response.
-	RsDequeue
-
-	// RsEnqueue denotes a message with the 'ENQUEUE' response.
-	RsEnqueue
-
-	// RsItem denotes a message with the 'ITEM' response.
-	RsItem
-
-	// RsSelect denotes a message with the 'SELECT' response.
-	RsSelect
-
-	/* -- Playlist.AutoAdvance feature
-	 * http://universityradioyork.github.io/baps3-spec/comms/internal/feature-autoadvance.html#responses
-	 */
-
-	// RqAutoAdvance denotes a message with the 'AUTOADVANCE' response.
-	RsAutoAdvance
 )
 
 // Yes, a global variable.
@@ -192,46 +66,15 @@ var wordStrings = []string{
 	"read",               // RqRead
 	"write",              // RqWrite
 	"delete",             // RqDelete
-	"quit",               // RqQuit
-	"dump",               // RqDump
-	"play",               // RqPlay
-	"stop",               // RqStop
-	"eject",              // RqEject
-	"load",               // RqLoad
-	"seek",               // RqSeek
-	"dequeue",            // RqDequeue
-	"enqueue",            // RqEnqueue
-	"list",               // RqList
-	"select",             // RqSelect
-	"autoadvance",        // RqAutoAdvance
 	"<UNKNOWN RESPONSE>", // RsUnknown
 	"RES",                // RsRes
 	"ACK",                // RsAck
-	"OK",                 // RsOk
-	"FAIL",               // RsFail
-	"WHAT",               // RsWhat
 	"OHAI",               // RsOhai
-	"FEATURES",           // RsFeatures
-	"STATE",              // RsState
-	"END",                // RsEnd
-	"FILE",               // RsFile
-	"TIME",               // RsTime
-	"COUNT",              // RsCount
-	"DEQUEUE",            // RsDequeue
-	"ENQUEUE",            // RsEnqueue
-	"ITEM",               // RsItem
-	"SELECT",             // RsSelect
-	"AUTOADVANCE",        // RsAutoAdvance
 }
 
 // IsUnknown returns whether word represents an unknown message word.
 func (word MessageWord) IsUnknown() bool {
 	return word == BadWord || word == RqUnknown || word == RsUnknown
-}
-
-// IsCommandResponse returns whether word respresents is a "personal" response.
-func (word MessageWord) IsCommandResponse() bool {
-	return word == RsOk || word == RsFail || word == RsWhat
 }
 
 func (word MessageWord) String() string {

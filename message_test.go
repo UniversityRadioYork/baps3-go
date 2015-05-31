@@ -11,22 +11,17 @@ func TestMessageWord(t *testing.T) {
 		str     string
 		word    MessageWord
 		unknown bool
-		cmdResp bool
 	}{
 		// Ok, a request
-		{"load", RqLoad, false, false},
+		{"read", RqRead, false},
 		// Ok, a response
-		{"OHAI", RsOhai, false, false},
-		// Ok, an OK response
-		{"OK", RsOk, false, true},
-		// Ok, a WHAT response
-		{"WHAT", RsWhat, false, true},
+		{"OHAI", RsOhai, false},
 		// Unknown, but a request
-		{"uwot", RqUnknown, true, false},
+		{"uwot", RqUnknown, true},
 		// Unknown, but a response
-		{"MATE", RsUnknown, true, false},
+		{"MATE", RsUnknown, true},
 		// Unknown, and unclear what type of message
-		{"MaTe", BadWord, true, false},
+		{"MaTe", BadWord, true},
 	}
 
 	for _, c := range cases {
@@ -37,10 +32,6 @@ func TestMessageWord(t *testing.T) {
 		if c.word.IsUnknown() != c.unknown {
 			t.Errorf("%q.IsUnknown() == %q, want %q", c.word, !c.unknown, c.unknown)
 		}
-		if c.word.IsCommandResponse() != c.cmdResp {
-			t.Errorf("%q.IsCommandResponse() == %q, want %q", c.word, !c.cmdResp, c.cmdResp)
-		}
-
 		// Only do the other direction if it's a valid response
 		if !c.unknown {
 			gotstr := c.word.String()
@@ -57,20 +48,20 @@ func TestMessage(t *testing.T) {
 		msg   *Message
 	}{
 		// Empty request
-		{[]string{"play"}, NewMessage(RqPlay)},
+		{[]string{"write"}, NewMessage(RqWrite)},
 		// Request with one argument
-		{[]string{"load", "foo"}, NewMessage(RqLoad).AddArg("foo")},
+		{[]string{"read", "/control/state"}, NewMessage(RqRead).AddArg("/control/state")},
 		// Request with multiple argument
-		{[]string{"enqueue", "0", "file", "blah"},
-			NewMessage(RqEnqueue).AddArg("0").AddArg("file").AddArg("blah"),
+		{[]string{"write", "/player/time", "0"},
+			NewMessage(RqWrite).AddArg("/player/time").AddArg("0"),
 		},
 		// Empty response
-		{[]string{"END"}, NewMessage(RsEnd)},
+		{[]string{"RES"}, NewMessage(RsRes)},
 		// Response with one argument
-		{[]string{"FILE", "foo"}, NewMessage(RsFile).AddArg("foo")},
+		{[]string{"OHAI", "playd 1.0.0"}, NewMessage(RsOhai).AddArg("playd 1.0.0")},
 		// Response with multiple argument
-		{[]string{"FAIL", "nou", "load", "blah"},
-			NewMessage(RsFail).AddArg("nou").AddArg("load").AddArg("blah"),
+		{[]string{"ACK", "int", "OK", "1337"},
+			NewMessage(RsAck).AddArg("int").AddArg("OK").AddArg("1337"),
 		},
 	}
 
