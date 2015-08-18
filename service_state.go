@@ -1,4 +1,4 @@
-package baps3
+package bifrost
 
 // The part of the BAPS3 connector code responsible for updating the
 // internal state.
