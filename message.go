@@ -51,6 +51,9 @@ const (
 	// RsRes denotes a message with the 'RES' response.
 	RsRes
 
+	// RsUpdate denotes a message with the 'RES' response.
+	RsUpdate
+
 	// RsAck denotes a message with the 'ACK' response.
 	RsAck
 
@@ -68,6 +71,7 @@ var wordStrings = []string{
 	"delete",             // RqDelete
 	"<UNKNOWN RESPONSE>", // RsUnknown
 	"RES",                // RsRes
+	"UPDATE",             // RsUpdate
 	"ACK",                // RsAck
 	"OHAI",               // RsOhai
 }
