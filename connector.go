@@ -1,4 +1,4 @@
-package baps3
+package bifrost
 
 import (
 	"bufio"
