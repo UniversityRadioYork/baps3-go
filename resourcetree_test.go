@@ -61,8 +61,8 @@ func TestSplitPath(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	got := NewDirectoryResourceNode()
-	want := DirectoryResourceNode{
+	got := NewDirectoryResourceNode(make(map[string]ResourceNoder))
+	want := &DirectoryResourceNode{
 		ResourceNode{},
 		make(map[string]ResourceNoder),
 	}
@@ -80,19 +80,20 @@ func TestAdd(t *testing.T) {
 		shouldErr bool
 	}{
 		{
-			NewDirectoryResourceNode(),
-			NewEntryResourceNode(ToBifrostType("lol")),
+			NewDirectoryResourceNode(make(map[string]ResourceNoder)),
+			// TODO(CaptainHayashi): bodge job to plaster over missing type function
+			NewEntryResourceNode(ToResource([]string{}, "lol")[0].value),
 			"/foo/bar/baz",
-			DirectoryResourceNode{
+			&DirectoryResourceNode{
 				ResourceNode{},
 				map[string]ResourceNoder{
-					"foo": DirectoryResourceNode{
+					"foo": &DirectoryResourceNode{
 						ResourceNode{},
 						map[string]ResourceNoder{
-							"bar": DirectoryResourceNode{
+							"bar": &DirectoryResourceNode{
 								ResourceNode{},
 								map[string]ResourceNoder{
-									"baz": EntryResourceNode{
+									"baz": &EntryResourceNode{
 										ResourceNode{},
 										BifrostTypeString("lol"),
 									},
