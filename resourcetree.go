@@ -151,6 +151,24 @@ func Read(r ResourceNoder, path string) Response {
 	}
 }
 
+func Write(r ResourceNoder, path, value string) Response {
+	// TODO(CaptainHayashi): non-string arguments?
+	// This will need to split the scalar stuff out of ToResponse so it works with BifrostTypes.
+
+	s := BifrostTypeString(value)
+
+	splitPath := splitPath(path)
+	err := r.NWrite([]string{}, splitPath, s)
+	status := Status{StatusOk, ""}
+	if err != nil {
+		status = Status{StatusError, err.Error()}
+	}
+	return Response{
+		status,
+		[]Resource{},
+	}
+}
+
 func (r ResourceNode) NRead(_, _ []string) ([]Resource, error) {
 	return nil, fmt.Errorf("THIS SHOULDNT HAPPEN")
 }
@@ -227,7 +245,16 @@ func (n *DirectoryResourceNode) NRead(prefix, relpath []string) ([]Resource, err
 }
 
 func (n *DirectoryResourceNode) NWrite(prefix, relpath []string, value BifrostType) error {
-	return nil
+	if len(relpath) == 0 { // This is the resource being Read
+		return fmt.Errorf("can't read a directory")
+	}
+	newPrefix := append(prefix, relpath[0])
+	if node, ok := n.children[relpath[0]]; ok {
+		return node.NWrite(newPrefix, relpath[1:], value)
+	}
+	// Nothing here, error time!
+	// TODO(wlcx): error types
+	return fmt.Errorf("Path %s does not exist", strings.Join(newPrefix, "/"))
 }
 
 func (n *DirectoryResourceNode) NDelete(prefix, relpath []string) error {
