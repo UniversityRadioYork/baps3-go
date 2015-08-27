@@ -2,6 +2,8 @@ package bifrost
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -35,16 +37,97 @@ func (r *Resource) String() string {
 	return fmt.Sprintf("/%s %s", strings.Join(r.path, "/"), r.value.String())
 }
 
+// Message flattens a Resource into a Bifrost RES, given the tag of the read
+// generating it.
+//
+// TODO(CaptainHayashi): does this belong elsewhere?
+func (r *Resource) Message(tag string) *Message {
+	vtype, val := r.value.ResourceBody()
+	return NewMessage(RsRes).AddArg(tag).AddArg("/" + strings.Join(r.path, "/")).AddArg(vtype).AddArg(val)
+}
+
+// ToResource converts an item and its location in the tree to a list of resources.
+// Struct fields may be annotated with a `res` tag giving the name the
+// corresponding child should take in the resource.
+func ToResource(path []string, item interface{}) []Resource {
+	val := reflect.ValueOf(item)
+	typ := reflect.TypeOf(item)
+
+	switch val.Kind() {
+	case reflect.Struct:
+		return structToResource(path, val, typ)
+	case reflect.Array, reflect.Slice:
+		return sliceToResource(path, val, typ)
+	case reflect.Int:
+		// TODO(CaptainHayashi): catch more integers here?
+		return []Resource{{path: path, value: BifrostTypeInt(item.(int))}}
+	default:
+		// TODO(CaptainHayashi): enums?
+		return []Resource{{path: path, value: BifrostTypeString(fmt.Sprint(item))}}
+	}
+}
+
+func structToResource(path []string, val reflect.Value, typ reflect.Type) []Resource {
+	nf := val.NumField()
+	af := nf
+
+	// First, reserve space for the incoming directory.
+	// We'll fix the inner value later.
+	res := []Resource{{path: path, value: nil}}
+
+	// Now, recursively work out the fields.
+	for i := 0; i < nf; i++ {
+		fieldt := typ.Field(i)
+
+		// We can't announce fields that aren't exported.
+		// If this one isn't, knock one off the available fields and ignore it.
+		if fieldt.PkgPath != "" {
+			af--
+			continue
+		}
+
+		// Work out the resource name from the field name/tag.
+		tag := fieldt.Tag.Get("res")
+		if tag == "" {
+			tag = fieldt.Name
+		}
+
+		// Now, recursively emit and collate each resource.
+		fieldv := val.Field(i)
+		res = append(res, ToResource(append(path, tag), fieldv.Interface())...)
+	}
+
+	// Now fill in the final available fields count
+	res[0].value = BifrostTypeDirectory{numChildren: af}
+
+	return res
+}
+
+func sliceToResource(path []string, val reflect.Value, typ reflect.Type) []Resource {
+	len := val.Len()
+
+	// As before, but now with a list and indexes.
+	// TODO(CaptainHayashi): modelling a list as a directory
+	res := []Resource{{path, BifrostTypeDirectory{numChildren: len}}}
+
+	for i := 0; i < len; i++ {
+		fieldv := val.Index(i)
+		res = append(res, ToResource(append(path, strconv.Itoa(i)), fieldv.Interface())...)
+	}
+
+	return res
+}
+
 type Response struct {
 	Status    Status
 	Resources []Resource
 }
 
 type ResourceNoder interface {
-	read(prefix, relpath []string) ([]Resource, error)
-	write(prefix, relpath []string, value BifrostType) error
-	delete(prefix, relpath []string) error
-	add(prefix, relpath []string, v ResourceNoder) error
+	NRead(prefix, relpath []string) ([]Resource, error)
+	NWrite(prefix, relpath []string, value BifrostType) error
+	NDelete(prefix, relpath []string) error
+	NAdd(prefix, relpath []string, v ResourceNoder) error
 }
 
 type ResourceNode struct {
@@ -52,12 +135,12 @@ type ResourceNode struct {
 
 func Add(r ResourceNoder, path string, n ResourceNoder) error {
 	splitPath := splitPath(path)
-	return r.add([]string{}, splitPath, n)
+	return r.NAdd([]string{}, splitPath, n)
 }
 
 func Read(r ResourceNoder, path string) Response {
 	splitPath := splitPath(path)
-	resps, err := r.read([]string{}, splitPath)
+	resps, err := r.NRead([]string{}, splitPath)
 	status := Status{StatusOk, ""}
 	if err != nil {
 		status = Status{StatusError, err.Error()}
@@ -68,7 +151,25 @@ func Read(r ResourceNoder, path string) Response {
 	}
 }
 
-func (r ResourceNode) read(_, _ []string) ([]Resource, error) {
+func Write(r ResourceNoder, path, value string) Response {
+	// TODO(CaptainHayashi): non-string arguments?
+	// This will need to split the scalar stuff out of ToResponse so it works with BifrostTypes.
+
+	s := BifrostTypeString(value)
+
+	splitPath := splitPath(path)
+	err := r.NWrite([]string{}, splitPath, s)
+	status := Status{StatusOk, ""}
+	if err != nil {
+		status = Status{StatusError, err.Error()}
+	}
+	return Response{
+		status,
+		[]Resource{},
+	}
+}
+
+func (r ResourceNode) NRead(_, _ []string) ([]Resource, error) {
 	return nil, fmt.Errorf("THIS SHOULDNT HAPPEN")
 }
 
@@ -77,14 +178,14 @@ type DirectoryResourceNode struct {
 	children     map[string]ResourceNoder
 }
 
-func NewDirectoryResourceNode() DirectoryResourceNode {
-	return DirectoryResourceNode{
+func NewDirectoryResourceNode(children map[string]ResourceNoder) *DirectoryResourceNode {
+	return &DirectoryResourceNode{
 		ResourceNode{},
-		make(map[string]ResourceNoder),
+		children,
 	}
 }
 
-func (n DirectoryResourceNode) add(prefix, relpath []string, v ResourceNoder) error {
+func (n *DirectoryResourceNode) NAdd(prefix, relpath []string, v ResourceNoder) error {
 	switch len(relpath) { // Error, trying to add a node to
 	case 0:
 		// Something
@@ -102,20 +203,20 @@ func (n DirectoryResourceNode) add(prefix, relpath []string, v ResourceNoder) er
 	default: // Traverse!
 		newPrefix := append(prefix, relpath[0])
 		if node, ok := n.children[relpath[0]]; ok {
-			return node.add(newPrefix, relpath[1:], v)
+			return node.NAdd(newPrefix, relpath[1:], v)
 		} else { // Nothing here, add a new directory
-			newNode := NewDirectoryResourceNode()
+			newNode := NewDirectoryResourceNode(make(map[string]ResourceNoder))
 			n.children[relpath[0]] = newNode
-			return newNode.add(newPrefix, relpath[1:], v)
+			return newNode.NAdd(newPrefix, relpath[1:], v)
 		}
 	}
 }
 
-func (n DirectoryResourceNode) read(prefix, relpath []string) ([]Resource, error) {
+func (n *DirectoryResourceNode) NRead(prefix, relpath []string) ([]Resource, error) {
 	if len(relpath) == 0 { // This is the resource being Read
 		childResources := []Resource{}
 		for childNodeName, childNode := range n.children {
-			r, err := childNode.read(append(prefix, childNodeName), []string{})
+			r, err := childNode.NRead(append(prefix, childNodeName), []string{})
 			if err != nil {
 				return nil, err
 			}
@@ -135,7 +236,7 @@ func (n DirectoryResourceNode) read(prefix, relpath []string) ([]Resource, error
 	} else {
 		newPrefix := append(prefix, relpath[0])
 		if node, ok := n.children[relpath[0]]; ok {
-			return node.read(newPrefix, relpath[1:])
+			return node.NRead(newPrefix, relpath[1:])
 		} else { // Nothing here, error time!
 			// TODO(wlcx): error types
 			return nil, fmt.Errorf("Path %s does not exist", strings.Join(newPrefix, "/"))
@@ -143,11 +244,20 @@ func (n DirectoryResourceNode) read(prefix, relpath []string) ([]Resource, error
 	}
 }
 
-func (n DirectoryResourceNode) write(prefix, relpath []string, value BifrostType) error {
-	return nil
+func (n *DirectoryResourceNode) NWrite(prefix, relpath []string, value BifrostType) error {
+	if len(relpath) == 0 { // This is the resource being Read
+		return fmt.Errorf("can't read a directory")
+	}
+	newPrefix := append(prefix, relpath[0])
+	if node, ok := n.children[relpath[0]]; ok {
+		return node.NWrite(newPrefix, relpath[1:], value)
+	}
+	// Nothing here, error time!
+	// TODO(wlcx): error types
+	return fmt.Errorf("Path %s does not exist", strings.Join(newPrefix, "/"))
 }
 
-func (n DirectoryResourceNode) delete(prefix, relpath []string) error {
+func (n *DirectoryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
 }
 
@@ -156,19 +266,19 @@ type EntryResourceNode struct {
 	Value BifrostType
 }
 
-func NewEntryResourceNode(v BifrostType) EntryResourceNode {
-	return EntryResourceNode{
+func NewEntryResourceNode(v BifrostType) *EntryResourceNode {
+	return &EntryResourceNode{
 		ResourceNode{},
 		v,
 	}
 }
 
-func (n EntryResourceNode) add(prefix, relpath []string, v ResourceNoder) error {
+func (n *EntryResourceNode) NAdd(prefix, relpath []string, v ResourceNoder) error {
 	// Trying to add something but we've hit a leaf node - stop. Error time.
 	return fmt.Errorf("Path %s already exists", strings.Join(append(prefix, relpath[0]), "/"))
 }
 
-func (n EntryResourceNode) read(prefix, relpath []string) ([]Resource, error) {
+func (n *EntryResourceNode) NRead(prefix, relpath []string) ([]Resource, error) {
 	if len(relpath) != 0 { // Bad request, this is not a directory
 		return nil, fmt.Errorf("Path %s does not exist", prefix)
 	} else {
@@ -181,10 +291,10 @@ func (n EntryResourceNode) read(prefix, relpath []string) ([]Resource, error) {
 	}
 }
 
-func (n EntryResourceNode) write(prefix, relpath []string, value BifrostType) error {
+func (n *EntryResourceNode) NWrite(prefix, relpath []string, value BifrostType) error {
 	return nil
 }
 
-func (n EntryResourceNode) delete(prefix, relpath []string) error {
+func (n *EntryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
 }

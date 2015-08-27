@@ -6,6 +6,7 @@ import (
 
 type BifrostType interface {
 	String() string
+	ResourceBody() (string, string)
 }
 
 type BifrostTypeString string
@@ -13,11 +14,17 @@ type BifrostTypeString string
 func (t BifrostTypeString) String() string {
 	return "STRING " + string(t)
 }
+func (t BifrostTypeString) ResourceBody() (string, string) {
+	return "string", string(t)
+}
 
 type BifrostTypeInt int
 
 func (t BifrostTypeInt) String() string {
 	return "INT " + strconv.Itoa(int(t))
+}
+func (t BifrostTypeInt) ResourceBody() (string, string) {
+	return "int", strconv.Itoa(int(t))
 }
 
 // BifrostTypeEnum is a value in a set of possible values
@@ -30,6 +37,10 @@ type BifrostTypeEnum struct {
 func (t BifrostTypeEnum) String() string {
 	return "I AM AN ENUM"
 }
+func (t BifrostTypeEnum) ResourceBody() (string, string) {
+	// TODO(CaptainHayashi): correct?
+	return "enum", t.current
+}
 
 type BifrostTypeDirectory struct {
 	numChildren int
@@ -38,12 +49,6 @@ type BifrostTypeDirectory struct {
 func (t BifrostTypeDirectory) String() string {
 	return "DIRECTORY " + strconv.Itoa(t.numChildren)
 }
-
-func ToBifrostType(val interface{}) BifrostType {
-	switch val.(type) {
-	case string:
-		return BifrostTypeString(val.(string))
-	default:
-		return nil
-	}
+func (t BifrostTypeDirectory) ResourceBody() (string, string) {
+	return "directory", strconv.Itoa(t.numChildren)
 }
