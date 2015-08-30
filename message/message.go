@@ -1,4 +1,4 @@
-package bifrost
+package message
 
 import (
 	"fmt"
@@ -116,9 +116,9 @@ type Message struct {
 	args []string
 }
 
-// NewMessage creates and returns a new Message with the given message word.
+// New creates and returns a new Message with the given message word.
 // The message will initially have no arguments; use AddArg to add arguments.
-func NewMessage(word MessageWord) *Message {
+func New(word MessageWord) *Message {
 	m := new(Message)
 	m.word = word
 	return m
@@ -186,7 +186,7 @@ func LineToMessage(line []string) (msg *Message, err error) {
 	if len(line) == 0 {
 		err = fmt.Errorf("cannot construct message from zero words")
 	} else {
-		msg = NewMessage(LookupWord(line[0]))
+		msg = New(LookupWord(line[0]))
 		for _, arg := range line[1:] {
 			msg.AddArg(arg)
 		}

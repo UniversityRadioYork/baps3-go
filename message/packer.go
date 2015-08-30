@@ -1,4 +1,4 @@
-package bifrost
+package message
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package bifrost
+package tokeniser
 
 import (
 	"bytes"
@@ -32,7 +32,6 @@ func cmpWords(a []string, b []string) bool {
 	}
 
 	return true
-
 }
 
 func TestTokenise(t *testing.T) {
@@ -171,7 +170,7 @@ func TestTokenise(t *testing.T) {
 
 	for _, c := range cases {
 		br := bytes.NewReader([]byte(c.in))
-		tok := NewTokeniser(br)
+		tok := New(br)
 
 		var (
 			got  [][]string

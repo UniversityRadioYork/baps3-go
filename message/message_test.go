@@ -1,10 +1,21 @@
-package bifrost
+package message
 
 import "testing"
 import "reflect"
 
-// cmpWords is defined in tokeniser_test.
-// TODO(CaptainHayashi): move cmpWords elsewhere?
+func cmpWords(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, aword := range a {
+		if aword != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
 
 func TestMessageWord(t *testing.T) {
 	cases := []struct {
@@ -48,20 +59,20 @@ func TestMessage(t *testing.T) {
 		msg   *Message
 	}{
 		// Empty request
-		{[]string{"write"}, NewMessage(RqWrite)},
+		{[]string{"write"}, New(RqWrite)},
 		// Request with one argument
-		{[]string{"read", "/control/state"}, NewMessage(RqRead).AddArg("/control/state")},
+		{[]string{"read", "/control/state"}, New(RqRead).AddArg("/control/state")},
 		// Request with multiple argument
 		{[]string{"write", "/player/time", "0"},
-			NewMessage(RqWrite).AddArg("/player/time").AddArg("0"),
+			New(RqWrite).AddArg("/player/time").AddArg("0"),
 		},
 		// Empty response
-		{[]string{"RES"}, NewMessage(RsRes)},
+		{[]string{"RES"}, New(RsRes)},
 		// Response with one argument
-		{[]string{"OHAI", "playd 1.0.0"}, NewMessage(RsOhai).AddArg("playd 1.0.0")},
+		{[]string{"OHAI", "playd 1.0.0"}, New(RsOhai).AddArg("playd 1.0.0")},
 		// Response with multiple argument
 		{[]string{"ACK", "int", "OK", "1337"},
-			NewMessage(RsAck).AddArg("int").AddArg("OK").AddArg("1337"),
+			New(RsAck).AddArg("int").AddArg("OK").AddArg("1337"),
 		},
 	}
 
@@ -79,7 +90,7 @@ func TestMessage(t *testing.T) {
 	// And now, test args.
 	// TODO(CaptainHayashi): refactor the above to integrate this test
 	args := []string{"bibbity", "bobbity", "boo"}
-	msg := NewMessage(RsUnknown)
+	msg := New(RsUnknown)
 	for _, arg := range args {
 		msg.AddArg(arg)
 	}

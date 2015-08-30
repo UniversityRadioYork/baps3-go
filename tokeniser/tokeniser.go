@@ -1,4 +1,4 @@
-package bifrost
+package tokeniser
 
 import (
 	"io"
@@ -31,7 +31,7 @@ type Tokeniser struct {
 
 // NewTokeniser creates and returns a new, empty Tokeniser.
 // The Tokeniser will read from the given Reader when Tokenise is called.
-func NewTokeniser(reader io.Reader) *Tokeniser {
+func New(reader io.Reader) *Tokeniser {
 	return &Tokeniser{
 		escapeNextChar:   false,
 		currentQuoteType: none,
