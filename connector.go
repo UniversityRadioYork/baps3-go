@@ -20,22 +20,24 @@ type Connector struct {
 	resCh     chan<- Message
 	ReqCh     chan Message
 	name      string
-	wg        *sync.WaitGroup
 	logger    *log.Logger
+	quit      chan struct{}
+	wg        *sync.WaitGroup
 }
 
 // InitConnector creates and returns a Connector.
 // The returned Connector shall have the given name, send responses through the
 // response channel resCh, report termination via the wait group waitGroup, and
 // log to logger.
-func InitConnector(name string, resCh chan Message, waitGroup *sync.WaitGroup, logger *log.Logger) *Connector {
+func InitConnector(name string, resCh chan Message, logger *log.Logger) *Connector {
 	c := new(Connector)
 	c.tokeniser = NewTokeniser()
 	c.resCh = resCh
 	c.ReqCh = make(chan Message)
 	c.name = name
-	c.wg = waitGroup
 	c.logger = logger
+	c.quit = make(chan struct{})
+	c.wg = new(sync.WaitGroup)
 	return c
 }
 
@@ -48,6 +50,12 @@ func (c *Connector) Connect(hostport string) {
 	}
 	c.conn = conn
 	c.buf = bufio.NewReader(c.conn)
+}
+
+// Quit synchronously terminates the connector, gracefully disconnecting from downstream
+func (c *Connector) Quit() {
+	c.quit <- struct{}{}
+	c.wg.Wait()
 }
 
 // Run is the main connector loop, reading bytes off the wire, tokenising and handling
@@ -75,28 +83,28 @@ func (c *Connector) Run() {
 	}(lineCh, errCh)
 
 	// Main run loop, select on new received lines, errors or incoming requests
+	c.wg.Add(1)
 	for {
 		select {
 		case lines := <-lineCh:
 			c.handleResponses(lines)
 		case err := <-errCh:
 			c.logger.Fatal(err)
-		case req, ok := <-c.ReqCh:
-			if !ok { // Other end closed the channel, shut down
-				c.logger.Println(c.name + " Connector shutting down")
-				err := c.conn.Close()
-				if err != nil {
-					c.logger.Println(err)
-				}
-				c.wg.Done()
-				return
-			}
+		case req := <-c.ReqCh:
 			data, err := req.Pack()
 			if err != nil {
 				c.logger.Println(err)
 			} else {
 				c.conn.Write(data)
 			}
+		case <-c.quit:
+			c.logger.Println(c.name + " Connector shutting down")
+			err := c.conn.Close()
+			if err != nil {
+				c.logger.Println(err)
+			}
+			c.wg.Done()
+			return
 		}
 	}
 }
