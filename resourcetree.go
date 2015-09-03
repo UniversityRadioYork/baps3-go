@@ -30,6 +30,7 @@ func splitPath(path string) []string {
 
 type Response struct {
 	Status Status
+	Path   []string
 	Node   ResourceNoder
 }
 
@@ -57,6 +58,7 @@ func Read(r ResourceNoder, path string) Response {
 	}
 	return Response{
 		status,
+		splitPath,
 		node,
 	}
 }
@@ -75,6 +77,7 @@ func Write(r ResourceNoder, path, value string) Response {
 	}
 	return Response{
 		status,
+		splitPath,
 		nil,
 	}
 }
