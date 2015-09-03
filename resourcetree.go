@@ -230,7 +230,6 @@ func toNodeReflect(val reflect.Value, typ reflect.Type) ResourceNoder {
 
 func structToNode(val reflect.Value, typ reflect.Type) ResourceNoder {
 	nf := val.NumField()
-	af := nf
 
 	children := map[string]ResourceNoder{}
 
@@ -240,8 +239,7 @@ func structToNode(val reflect.Value, typ reflect.Type) ResourceNoder {
 
 		// We can't announce fields that aren't exported.
 		// If this one isn't, knock one off the available fields and ignore it.
-		if fieldt.PkgPath != "" {
-			af--
+		if fieldt.PkgPath != "" || fieldt.Anonymous {
 			continue
 		}
 
