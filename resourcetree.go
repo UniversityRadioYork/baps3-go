@@ -46,23 +46,43 @@ func (r *Resource) Message(tag string) *Message {
 	return NewMessage(RsRes).AddArg(tag).AddArg("/" + strings.Join(r.path, "/")).AddArg(vtype).AddArg(val)
 }
 
+// Resourcifier is the interface for things that can be converted to resource
+// lists.
+type Resourcifier interface {
+	// Resourcify converts a Resourcifier into a list of resources.
+	Resourcify(path []string) []Resource
+}
+
 // ToResource converts an item and its location in the tree to a list of resources.
+// If the item is a Resourcifier, Resourcify() is called on it.
 // Struct fields may be annotated with a `res` tag giving the name the
 // corresponding child should take in the resource.
 func ToResource(path []string, item interface{}) []Resource {
-	val := reflect.ValueOf(item)
-	typ := reflect.TypeOf(item)
+	// First, see if item can do the work for us.
+	switch item := item.(type) {
+	case Resourcifier:
+		return item.Resourcify(path)
+	default:
+		return toResourceReflect(path, reflect.ValueOf(item), reflect.TypeOf(item))
+	}
+}
 
+func toResourceReflect(path []string, val reflect.Value, typ reflect.Type) []Resource {
 	switch val.Kind() {
+	case reflect.Ptr:
+		// Don't call toResourceReflect here; otherwise, we'll forget
+		// to check to see if it's a Resourcifier.
+		return ToResource(path, reflect.Indirect(val).Interface())
 	case reflect.Struct:
 		return structToResource(path, val, typ)
 	case reflect.Array, reflect.Slice:
 		return sliceToResource(path, val, typ)
 	case reflect.Int:
 		// TODO(CaptainHayashi): catch more integers here?
-		return []Resource{{path: path, value: BifrostTypeInt(item.(int))}}
+		return []Resource{{path: path, value: BifrostTypeInt(val.Int())}}
 	default:
 		// TODO(CaptainHayashi): enums?
+		item := val.Interface()
 		return []Resource{{path: path, value: BifrostTypeString(fmt.Sprint(item))}}
 	}
 }
