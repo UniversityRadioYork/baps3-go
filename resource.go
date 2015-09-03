@@ -82,7 +82,7 @@ func structToResource(path []string, val reflect.Value, typ reflect.Type) []Reso
 
 		// We can't announce fields that aren't exported.
 		// If this one isn't, knock one off the available fields and ignore it.
-		if fieldt.PkgPath != "" {
+		if fieldt.PkgPath != "" || fieldt.Anonymous {
 			af--
 			continue
 		}
