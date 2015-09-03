@@ -1,6 +1,7 @@
 package bifrost
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -51,4 +52,18 @@ func (t BifrostTypeDirectory) String() string {
 }
 func (t BifrostTypeDirectory) ResourceBody() (string, string) {
 	return "directory", strconv.Itoa(t.numChildren)
+}
+
+// ToBifrostType converts a value to a BifrostType.
+// It will return a BifrostTypeInt if the value is an integer, and
+// BifrostTypeString otherwise (converting the value to a string).
+func ToBifrostType(v interface{}) BifrostType {
+	switch v := v.(type) {
+	case int:
+		return BifrostTypeInt(v)
+	case string:
+		return BifrostTypeString(v)
+	default:
+		return BifrostTypeString(fmt.Sprint(v))
+	}
 }

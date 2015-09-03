@@ -25,6 +25,9 @@ func (r *Resource) Message(tag string) *Message {
 	return NewMessage(RsRes).AddArg(tag).AddArg("/" + strings.Join(r.path, "/")).AddArg(vtype).AddArg(val)
 }
 
+// TODO(CaptainHayashi): Do we need all this machinery?
+// []Resources are practically only emitted by converting ResourceNodes!
+
 // Resourcifier is the interface for things that can be converted to resource
 // lists.
 type Resourcifier interface {
@@ -60,13 +63,8 @@ func toResourceReflect(path []string, val reflect.Value, typ reflect.Type) []Res
 		return structToResource(path, val, typ)
 	case reflect.Array, reflect.Slice:
 		return sliceToResource(path, val, typ)
-	case reflect.Int:
-		// TODO(CaptainHayashi): catch more integers here?
-		return []Resource{{path: path, value: BifrostTypeInt(val.Int())}}
 	default:
-		// TODO(CaptainHayashi): enums?
-		item := val.Interface()
-		return []Resource{{path: path, value: BifrostTypeString(fmt.Sprint(item))}}
+		return []Resource{{path: path, value: ToBifrostType(val.Interface())}}
 	}
 }
 
