@@ -39,6 +39,8 @@ type Resourcifier interface {
 func ToResource(path []string, item interface{}) []Resource {
 	// First, see if item can do the work for us.
 	switch item := item.(type) {
+	case BifrostType:
+		return []Resource{{path, item}}
 	case Resourcifier:
 		return item.Resourcify(path)
 	default:
@@ -52,6 +54,8 @@ func toResourceReflect(path []string, val reflect.Value, typ reflect.Type) []Res
 		// Don't call toResourceReflect here; otherwise, we'll forget
 		// to check to see if it's a Resourcifier.
 		return ToResource(path, reflect.Indirect(val).Interface())
+	case reflect.Map:
+		return mapToResource(path, val, typ)
 	case reflect.Struct:
 		return structToResource(path, val, typ)
 	case reflect.Array, reflect.Slice:
@@ -106,12 +110,29 @@ func sliceToResource(path []string, val reflect.Value, typ reflect.Type) []Resou
 	len := val.Len()
 
 	// As before, but now with a list and indexes.
-	// TODO(CaptainHayashi): modelling a list as a directory
 	res := []Resource{{path, BifrostTypeDirectory{numChildren: len}}}
 
 	for i := 0; i < len; i++ {
 		fieldv := val.Index(i)
 		res = append(res, ToResource(append(path, strconv.Itoa(i)), fieldv.Interface())...)
+	}
+
+	return res
+}
+
+func mapToResource(path []string, val reflect.Value, typ reflect.Type) []Resource {
+	// This is similar to sliceToResource, but now we're indexing over keys
+	// too.
+	len := val.Len()
+
+	res := []Resource{{path, BifrostTypeDirectory{numChildren: len}}}
+
+	for _, kval := range val.MapKeys() {
+		// We just stringify keys to turn them into bits of path.
+		// This should be sufficient for 99.9% of conditions.
+		kstr := fmt.Sprint(kval.Interface())
+
+		res = append(res, ToResource(append(path, kstr), val.MapIndex(kval).Interface())...)
 	}
 
 	return res

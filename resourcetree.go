@@ -144,6 +144,10 @@ func (n DirectoryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
 }
 
+func (n DirectoryResourceNode) Resourcify(path []string) []Resource {
+	return ToResource(path, map[string]ResourceNoder(n))
+}
+
 type EntryResourceNode struct {
 	ResourceNode
 	Value BifrostType
@@ -175,4 +179,8 @@ func (n EntryResourceNode) NWrite(prefix, relpath []string, value BifrostType) e
 
 func (n EntryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
+}
+
+func (n EntryResourceNode) Resourcify(path []string) []Resource {
+	return ToResource(path, n.Value)
 }
