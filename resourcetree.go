@@ -28,98 +28,9 @@ func splitPath(path string) []string {
 	return splitPath
 }
 
-type Resource struct {
-	path  []string
-	value BifrostType
-}
-
-func (r *Resource) String() string {
-	return fmt.Sprintf("/%s %s", strings.Join(r.path, "/"), r.value.String())
-}
-
-// Message flattens a Resource into a Bifrost RES, given the tag of the read
-// generating it.
-//
-// TODO(CaptainHayashi): does this belong elsewhere?
-func (r *Resource) Message(tag string) *Message {
-	vtype, val := r.value.ResourceBody()
-	return NewMessage(RsRes).AddArg(tag).AddArg("/" + strings.Join(r.path, "/")).AddArg(vtype).AddArg(val)
-}
-
-// ToResource converts an item and its location in the tree to a list of resources.
-// Struct fields may be annotated with a `res` tag giving the name the
-// corresponding child should take in the resource.
-func ToResource(path []string, item interface{}) []Resource {
-	val := reflect.ValueOf(item)
-	typ := reflect.TypeOf(item)
-
-	switch val.Kind() {
-	case reflect.Struct:
-		return structToResource(path, val, typ)
-	case reflect.Array, reflect.Slice:
-		return sliceToResource(path, val, typ)
-	case reflect.Int:
-		// TODO(CaptainHayashi): catch more integers here?
-		return []Resource{{path: path, value: BifrostTypeInt(item.(int))}}
-	default:
-		// TODO(CaptainHayashi): enums?
-		return []Resource{{path: path, value: BifrostTypeString(fmt.Sprint(item))}}
-	}
-}
-
-func structToResource(path []string, val reflect.Value, typ reflect.Type) []Resource {
-	nf := val.NumField()
-	af := nf
-
-	// First, reserve space for the incoming directory.
-	// We'll fix the inner value later.
-	res := []Resource{{path: path, value: nil}}
-
-	// Now, recursively work out the fields.
-	for i := 0; i < nf; i++ {
-		fieldt := typ.Field(i)
-
-		// We can't announce fields that aren't exported.
-		// If this one isn't, knock one off the available fields and ignore it.
-		if fieldt.PkgPath != "" {
-			af--
-			continue
-		}
-
-		// Work out the resource name from the field name/tag.
-		tag := fieldt.Tag.Get("res")
-		if tag == "" {
-			tag = fieldt.Name
-		}
-
-		// Now, recursively emit and collate each resource.
-		fieldv := val.Field(i)
-		res = append(res, ToResource(append(path, tag), fieldv.Interface())...)
-	}
-
-	// Now fill in the final available fields count
-	res[0].value = BifrostTypeDirectory{numChildren: af}
-
-	return res
-}
-
-func sliceToResource(path []string, val reflect.Value, typ reflect.Type) []Resource {
-	len := val.Len()
-
-	// As before, but now with a list and indexes.
-	// TODO(CaptainHayashi): modelling a list as a directory
-	res := []Resource{{path, BifrostTypeDirectory{numChildren: len}}}
-
-	for i := 0; i < len; i++ {
-		fieldv := val.Index(i)
-		res = append(res, ToResource(append(path, strconv.Itoa(i)), fieldv.Interface())...)
-	}
-
-	return res
-}
-
 type Response struct {
 	Status Status
+	Path   []string
 	Node   ResourceNoder
 }
 
@@ -147,6 +58,7 @@ func Read(r ResourceNoder, path string) Response {
 	}
 	return Response{
 		status,
+		splitPath,
 		node,
 	}
 }
@@ -165,6 +77,7 @@ func Write(r ResourceNoder, path, value string) Response {
 	}
 	return Response{
 		status,
+		splitPath,
 		nil,
 	}
 }
@@ -236,6 +149,10 @@ func (n DirectoryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
 }
 
+func (n DirectoryResourceNode) Resourcify(path []string) []Resource {
+	return ToResource(path, map[string]ResourceNoder(n))
+}
+
 type EntryResourceNode struct {
 	ResourceNode
 	Value BifrostType
@@ -267,4 +184,111 @@ func (n EntryResourceNode) NWrite(prefix, relpath []string, value BifrostType) e
 
 func (n EntryResourceNode) NDelete(prefix, relpath []string) error {
 	return nil
+}
+
+func (n EntryResourceNode) Resourcify(path []string) []Resource {
+	return ToResource(path, n.Value)
+}
+
+// Nodifier is the interface for things that can be converted to resource
+// nodes.
+type Nodifier interface {
+	// Nodify converts this value into a ResourceNoder.
+	Nodify() ResourceNoder
+}
+
+// ToNode converts an arbitrary value into a resource node.
+// If the item is a ResourceNoder, it is ignored.
+// If the item is a Nodifier, Nodify() is called on it.
+// Struct fields may be annotated with a `res` tag giving the name the
+// corresponding child should take in the resource.
+func ToNode(item interface{}) ResourceNoder {
+	// First, see if item can do the work for us.
+	switch item := item.(type) {
+	case ResourceNoder:
+		return item
+	case Nodifier:
+		return item.Nodify()
+	default:
+		return toNodeReflect(reflect.ValueOf(item), reflect.TypeOf(item))
+	}
+}
+
+func toNodeReflect(val reflect.Value, typ reflect.Type) ResourceNoder {
+	switch val.Kind() {
+	case reflect.Ptr:
+		// Don't call toNodeReflect here; otherwise, we'll forget
+		// to check to see if it's a Node or Nodifier.
+		return ToNode(reflect.Indirect(val).Interface())
+	case reflect.Map:
+		return mapToNode(val, typ)
+	case reflect.Struct:
+		return structToNode(val, typ)
+	case reflect.Array, reflect.Slice:
+		return sliceToNode(val, typ)
+	default:
+		return NewEntryResourceNode(ToBifrostType(val.Interface()))
+	}
+}
+
+func structToNode(val reflect.Value, typ reflect.Type) ResourceNoder {
+	nf := val.NumField()
+
+	children := map[string]ResourceNoder{}
+
+	// Now, work out the fields.
+	for i := 0; i < nf; i++ {
+		fieldt := typ.Field(i)
+
+		// We can't announce fields that aren't exported.
+		// If this one isn't, knock one off the available fields and ignore it.
+		if fieldt.PkgPath != "" || fieldt.Anonymous {
+			continue
+		}
+
+		// Work out the resource name from the field name/tag.
+		tag := fieldt.Tag.Get("res")
+		if tag == "" {
+			tag = fieldt.Name
+		}
+
+		// Now, recursively emit and collate each resource.
+		fieldv := val.Field(i)
+		children[tag] = ToNode(fieldv.Interface())
+	}
+
+	// Now package the children into a DirectoryResourceNode.
+	return NewDirectoryResourceNode(children)
+}
+
+func sliceToNode(val reflect.Value, typ reflect.Type) ResourceNoder {
+	len := val.Len()
+
+	// As before, but now with a list and indexes.
+	children := map[string]ResourceNoder{}
+
+	for i := 0; i < len; i++ {
+		fieldv := val.Index(i)
+		children[strconv.Itoa(i)] = ToNode(fieldv.Interface())
+	}
+
+	// Now package the children into a DirectoryResourceNode.
+	return NewDirectoryResourceNode(children)
+}
+
+func mapToNode(val reflect.Value, typ reflect.Type) ResourceNoder {
+	// This is similar to sliceToResource, but now we're indexing over keys
+	// too.
+	children := map[string]ResourceNoder{}
+
+	for _, kval := range val.MapKeys() {
+		// We just stringify keys to turn them into bits of path.
+		// This should be sufficient for 99.9% of conditions.
+		kstr := fmt.Sprint(kval.Interface())
+
+		children[kstr] = ToNode(val.MapIndex(kval).Interface())
+	}
+
+	// Now package the children into a DirectoryResourceNode.
+	return NewDirectoryResourceNode(children)
 }

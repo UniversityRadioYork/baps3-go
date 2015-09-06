@@ -106,3 +106,51 @@ func TestAdd(t *testing.T) {
 		}
 	}
 }
+
+// TestResourcify ensures that the stock resource tree nodes are giving us
+// decent []Resource lists.
+func TestResourcify(t *testing.T) {
+	cases := []struct {
+		have ResourceNoder
+		want []Resource
+	}{
+		{
+			NewEntryResourceNode(BifrostTypeString("fus ro dah")),
+			[]Resource{
+				Resource{[]string{}, BifrostTypeString("fus ro dah")},
+			},
+		},
+		{
+			NewEntryResourceNode(BifrostTypeInt(8675309)),
+			[]Resource{
+				Resource{[]string{}, BifrostTypeInt(8675309)},
+			},
+		},
+		{
+			NewDirectoryResourceNode(
+				map[string]ResourceNoder{
+					"we're":  NewEntryResourceNode(BifrostTypeString("only")),
+					"making": NewEntryResourceNode(BifrostTypeString("plans")),
+					"for":    NewEntryResourceNode(BifrostTypeString("Nigel")),
+				},
+			),
+			[]Resource{
+				// 3 entries
+				Resource{[]string{}, BifrostTypeDirectory{3}},
+				Resource{[]string{"we're"}, BifrostTypeString("only")},
+				Resource{[]string{"making"}, BifrostTypeString("plans")},
+				Resource{[]string{"for"}, BifrostTypeString("Nigel")},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		got := ToResource([]string{}, c.have)
+		// TODO(CaptainHayashi): Technically DeepEqual is too strict
+		// here--we want to be able to ignore ordering in the
+		// []Resource.
+		if !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("bad resourcify: have %q, got %q, want %q", c.have, got, c.want)
+		}
+	}
+}
