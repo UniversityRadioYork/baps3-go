@@ -2,6 +2,7 @@ package bifrost
 
 import (
 	"bytes"
+	"io"
 	"unicode"
 )
 
@@ -17,38 +18,60 @@ const (
 
 	// double represents "double quoted" parts of a BAPS3 message.
 	double
+
+	// bufsize is the number of bytes the Tokeniser will try to read from
+	// its Reader in one go.
+	bufsize int = 4096
 )
 
-// Tokeniser holds the state of a BAPS3 protocol tokeniser.
+// Tokeniser holds the state of a Bifrost protocol tokeniser.
 type Tokeniser struct {
+	// raw is the current back-buffer of bytes to tokenise.
+	raw []byte
+	// rawpos is the current position in `raw`.
+	rawpos int
+	// rawcount is the number of valid bytes in `raw`.
+	rawcount int
+
 	inWord           bool
 	escapeNextChar   bool
 	currentQuoteType quoteType
 	word             *bytes.Buffer
 	words            []string
-	lines            [][]string
+	lineDone         bool
 	err              error
+	reader           io.Reader
 }
 
 // NewTokeniser creates and returns a new, empty Tokeniser.
-func NewTokeniser() *Tokeniser {
+// The Tokeniser will read from the given Reader when Tokenise is called.
+func NewTokeniser(reader io.Reader) *Tokeniser {
+	return NewTokeniserWith(reader, bufsize)
+}
+
+// NewTokeniserWith is NewTokeniser, but with a custom internal buffer size.
+func NewTokeniserWith(reader io.Reader, size int) *Tokeniser {
 	t := new(Tokeniser)
+
+	t.raw = make([]byte, size)
+	t.rawpos = 0
+	t.rawcount = 0
+
 	t.escapeNextChar = false
 	t.currentQuoteType = none
 	t.word = new(bytes.Buffer)
 	t.inWord = false
 	t.words = []string{}
-	t.lines = [][]string{}
+	t.lineDone = false
 	t.err = nil
+	t.reader = reader
 	return t
 }
 
 func (t *Tokeniser) endLine() {
 	// We might still be in the middle of a word.
 	t.endWord()
-
-	t.lines = append(t.lines, t.words)
-	t.words = []string{}
+	t.lineDone = true
 }
 
 func (t *Tokeniser) endWord() {
@@ -74,49 +97,63 @@ func (t *Tokeniser) endWord() {
 	t.inWord = false
 }
 
-// Tokenise feeds raw bytes into a Tokeniser.
+// Tokenise reads a tokenised line from the Reader.
 //
-// If the bytes include the ending of one or more command lines, those lines
-// shall be returned, as a slice of lines represented as slices of
-// word-strings.  Else, the slice shall be empty.
-//
-// Tokenise may return an error if its current word gets over-full.  In this
-// case, lines will contain the lines it managed to tokenise before keeling
-// over, count will contain the number of bytes processed (including the byte
-// causing the error), and the tokeniser will remain in error until replaced or
-// the current word is ended.
-func (t *Tokeniser) Tokenise(data []byte) (lines [][]string, count uint64, err error) {
-	count = 0
-	for _, b := range data {
-		// Exit early if the current word has become over-full.  This
-		// lets the caller handle the error without silently masking it
-		// if we manage to progress.
-		if t.err != nil {
-			break
-		}
-
-		if t.escapeNextChar {
-			t.put(b)
-			t.escapeNextChar = false
-			continue
-		}
-
-		switch t.currentQuoteType {
-		case none:
-			t.tokeniseNoQuotes(b)
-		case single:
-			t.tokeniseSingleQuotes(b)
-		case double:
-			t.tokeniseDoubleQuotes(b)
-		}
-
-		count++
+// Tokenise may return an error if its current word gets over-full, or the Reader chokes.
+// In the former case, the Tokeniser will need to be replaced.
+func (t *Tokeniser) Tokenise() ([]string, error) {
+	// Have we previously suffered a permanent tokenising error?
+	// If so, bail with it.
+	if t.err != nil {
+		return []string{}, t.err
 	}
 
-	lines, t.lines = t.lines, [][]string{}
-	err, t.err = t.err, nil
+	for {
+		// First, tokenise everything in our buffer.
+		for ; t.rawpos < t.rawcount; t.rawpos++ {
+			t.tokeniseByte(t.raw[t.rawpos])
+			if t.err != nil {
+				return []string{}, t.err
+			}
 
-	return
+			// Have we finished a line?
+			// If so, clean up for another tokenising, and return it.
+			if t.lineDone {
+				// The t.rawpos++ above won't fire if we leave now.
+				// Thus, we need to do it here.
+				t.rawpos++
+
+				t.lineDone = false
+				line := t.words
+				t.words = []string{}
+				return line, nil
+			}
+		}
+		// We've run out of buffer now, so prod the Reader.
+		n, err := t.reader.Read(t.raw)
+		if err != nil {
+			return []string{}, err
+		}
+		t.rawpos, t.rawcount = 0, n
+	}
+}
+
+// tokeniseByte tokenises a single byte.
+func (t *Tokeniser) tokeniseByte(b byte) {
+	if t.escapeNextChar {
+		t.put(b)
+		t.escapeNextChar = false
+		return
+	}
+
+	switch t.currentQuoteType {
+	case none:
+		t.tokeniseNoQuotes(b)
+	case single:
+		t.tokeniseSingleQuotes(b)
+	case double:
+		t.tokeniseDoubleQuotes(b)
+	}
 }
 
 // tokeniseNoQuotes tokenises a single byte outside quote characters.

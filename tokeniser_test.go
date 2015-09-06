@@ -1,6 +1,8 @@
 package bifrost
 
 import (
+	"bytes"
+	"io"
 	"testing"
 )
 
@@ -175,9 +177,26 @@ func TestTokenise(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		tok := NewTokeniser()
-		got, _, err := tok.Tokenise([]byte(c.in))
-		if err != nil {
+		br := bytes.NewReader([]byte(c.in))
+		tok := NewTokeniser(br)
+
+		var (
+			got [][]string
+			err error
+			line []string
+		)
+
+		for {
+			line, err = tok.Tokenise()
+
+			if err != nil {
+				break
+			}
+
+			got = append(got, line)
+		}
+
+		if err != io.EOF {
 			t.Errorf("Tokenise(%q) gave error %q", c.in, err)
 		}
 		if !cmpLines(got, c.want) {
