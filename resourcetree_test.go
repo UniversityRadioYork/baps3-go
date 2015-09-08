@@ -146,11 +146,25 @@ func TestResourcify(t *testing.T) {
 
 	for _, c := range cases {
 		got := ToResource([]string{}, c.have)
-		// TODO(CaptainHayashi): Technically DeepEqual is too strict
-		// here--we want to be able to ignore ordering in the
-		// []Resource.
-		if !reflect.DeepEqual(got, c.want) {
+
+		if len(got) != len(c.want) {
 			t.Fatalf("bad resourcify: have %q, got %q, want %q", c.have, got, c.want)
+		}
+
+		// Slightly nasty own-rolled loop, as DeepEqual tests order of slice
+		// as well, which we can't guarantee.
+		// TODO: Check for duplicates
+		for i := range got {
+			equal := false
+			for j := range c.want {
+				if reflect.DeepEqual(got[i], c.want[j]) {
+					equal = true
+					break
+				}
+			}
+			if !equal {
+				t.Fatalf("bad resourcify: have %q, got %q, want %q", c.have, got, c.want)
+			}
 		}
 	}
 }
