@@ -35,17 +35,16 @@ type Tokeniser struct {
 // NewTokeniser creates and returns a new, empty Tokeniser.
 // The Tokeniser will read from the given Reader when Tokenise is called.
 func NewTokeniser(reader io.Reader) *Tokeniser {
-	t := new(Tokeniser)
-
-	t.escapeNextChar = false
-	t.currentQuoteType = none
-	t.word = new(bytes.Buffer)
-	t.inWord = false
-	t.words = []string{}
-	t.lineDone = false
-	t.err = nil
-	t.reader = reader
-	return t
+	return &Tokeniser{
+		escapeNextChar:   false,
+		currentQuoteType: none,
+		word:             new(bytes.Buffer),
+		inWord:           false,
+		words:            []string{},
+		lineDone:         false,
+		err:              nil,
+		reader:           reader,
+	}
 }
 
 func (t *Tokeniser) endLine() {
