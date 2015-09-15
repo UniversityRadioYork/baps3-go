@@ -1,7 +1,6 @@
 package bifrost
 
 import (
-	"bytes"
 	"io"
 	"unicode"
 )
@@ -25,10 +24,8 @@ type Tokeniser struct {
 	inWord           bool
 	escapeNextChar   bool
 	currentQuoteType quoteType
-	word             *bytes.Buffer
+	word             []byte
 	words            []string
-	lineDone         bool
-	err              error
 	reader           io.Reader
 }
 
@@ -38,19 +35,11 @@ func NewTokeniser(reader io.Reader) *Tokeniser {
 	return &Tokeniser{
 		escapeNextChar:   false,
 		currentQuoteType: none,
-		word:             new(bytes.Buffer),
+		word:             []byte{},
 		inWord:           false,
 		words:            []string{},
-		lineDone:         false,
-		err:              nil,
 		reader:           reader,
 	}
-}
-
-func (t *Tokeniser) endLine() {
-	// We might still be in the middle of a word.
-	t.endWord()
-	t.lineDone = true
 }
 
 func (t *Tokeniser) endWord() {
@@ -59,34 +48,15 @@ func (t *Tokeniser) endWord() {
 		return
 	}
 
-	// This ensures any non-UTF8 is replaced with the Unicode replacement
-	// character.  We could use String(), but this would permit invalid
-	// UTF8.
-	uword := []rune{}
-	for {
-		r, _, err := t.word.ReadRune()
-		if err != nil {
-			break
-		}
-		uword = append(uword, r)
-	}
-
-	t.words = append(t.words, string(uword))
-	t.word.Truncate(0)
+	t.words = append(t.words, string(t.word))
+	t.word = []byte{}
 	t.inWord = false
 }
 
 // Tokenise reads a tokenised line from the Reader.
 //
-// Tokenise may return an error if its current word gets over-full, or the Reader chokes.
-// In the former case, the Tokeniser will need to be replaced.
+// Tokenise may return an error if the Reader chokes.
 func (t *Tokeniser) Tokenise() ([]string, error) {
-	// Have we previously suffered a permanent tokenising error?
-	// If so, bail with it.
-	if t.err != nil {
-		return []string{}, t.err
-	}
-
 	// As per http://grokbase.com/t/gg/golang-nuts/139fgmycba
 	var bs [1]byte
 
@@ -104,15 +74,10 @@ func (t *Tokeniser) Tokenise() ([]string, error) {
 			continue
 		}
 
-		t.tokeniseByte(bs[0])
-		if t.err != nil {
-			return []string{}, t.err
-		}
-
+		lineDone := t.tokeniseByte(bs[0])
 		// Have we finished a line?
 		// If so, clean up for another tokenising, and return it.
-		if t.lineDone {
-			t.lineDone = false
+		if lineDone {
 			line := t.words
 			t.words = []string{}
 			return line, nil
@@ -121,7 +86,11 @@ func (t *Tokeniser) Tokenise() ([]string, error) {
 }
 
 // tokeniseByte tokenises a single byte.
-func (t *Tokeniser) tokeniseByte(b byte) {
+// It returns true if we've finished a line, which can only occur outside of
+// quotes
+func (t *Tokeniser) tokeniseByte(b byte) (endLine bool) {
+	endLine = false
+
 	if t.escapeNextChar {
 		t.put(b)
 		t.escapeNextChar = false
@@ -130,16 +99,22 @@ func (t *Tokeniser) tokeniseByte(b byte) {
 
 	switch t.currentQuoteType {
 	case none:
-		t.tokeniseNoQuotes(b)
+		endLine = t.tokeniseNoQuotes(b)
 	case single:
 		t.tokeniseSingleQuotes(b)
 	case double:
 		t.tokeniseDoubleQuotes(b)
 	}
+
+	return
 }
 
 // tokeniseNoQuotes tokenises a single byte outside quote characters.
-func (t *Tokeniser) tokeniseNoQuotes(b byte) {
+// It returns true if we've finished a line, and any error that occurred while
+// tokenising.
+func (t *Tokeniser) tokeniseNoQuotes(b byte) (endLine bool) {
+	endLine = false
+
 	switch b {
 	case '\'':
 		// Switching into single quotes mode starts a word.
@@ -154,7 +129,9 @@ func (t *Tokeniser) tokeniseNoQuotes(b byte) {
 	case '\\':
 		t.escapeNextChar = true
 	case '\n':
-		t.endLine()
+		// We're ending the current word as well as a line.
+		t.endWord()
+		endLine = true
 	default:
 		// Note that this will only check for ASCII
 		// whitespace, because we only pass it one byte
@@ -165,9 +142,13 @@ func (t *Tokeniser) tokeniseNoQuotes(b byte) {
 			t.put(b)
 		}
 	}
+
+	return
 }
 
 // tokeniseSingleQuotes tokenises a single byte within single quotes.
+// It doesn't need to return whether we've finished a line, because we can't finish
+// a line in quotes.
 func (t *Tokeniser) tokeniseSingleQuotes(b byte) {
 	switch b {
 	case '\'':
@@ -178,6 +159,8 @@ func (t *Tokeniser) tokeniseSingleQuotes(b byte) {
 }
 
 // tokeniseDoubleQuotes tokenises a single byte within double quotes.
+// It doesn't need to return whether we've finished a line, because we can't finish
+// a line in quotes.
 func (t *Tokeniser) tokeniseDoubleQuotes(b byte) {
 	switch b {
 	case '"':
@@ -189,10 +172,8 @@ func (t *Tokeniser) tokeniseDoubleQuotes(b byte) {
 	}
 }
 
-// put adds a byte to the Tokeniser's buffer.
-// If the buffer is too big, an error will be raised and propagated to the
-// Tokeniser's user.
+// put adds a byte to the Tokeniser's word.
 func (t *Tokeniser) put(b byte) {
-	t.err = t.word.WriteByte(b)
 	t.inWord = true
+	t.word = append(t.word, b)
 }
