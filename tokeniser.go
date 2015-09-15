@@ -18,21 +18,10 @@ const (
 
 	// double represents "double quoted" parts of a BAPS3 message.
 	double
-
-	// bufsize is the number of bytes the Tokeniser will try to read from
-	// its Reader in one go.
-	bufsize int = 4096
 )
 
 // Tokeniser holds the state of a Bifrost protocol tokeniser.
 type Tokeniser struct {
-	// raw is the current back-buffer of bytes to tokenise.
-	raw []byte
-	// rawpos is the current position in `raw`.
-	rawpos int
-	// rawcount is the number of valid bytes in `raw`.
-	rawcount int
-
 	inWord           bool
 	escapeNextChar   bool
 	currentQuoteType quoteType
@@ -46,16 +35,7 @@ type Tokeniser struct {
 // NewTokeniser creates and returns a new, empty Tokeniser.
 // The Tokeniser will read from the given Reader when Tokenise is called.
 func NewTokeniser(reader io.Reader) *Tokeniser {
-	return NewTokeniserWith(reader, bufsize)
-}
-
-// NewTokeniserWith is NewTokeniser, but with a custom internal buffer size.
-func NewTokeniserWith(reader io.Reader, size int) *Tokeniser {
 	t := new(Tokeniser)
-
-	t.raw = make([]byte, size)
-	t.rawpos = 0
-	t.rawcount = 0
 
 	t.escapeNextChar = false
 	t.currentQuoteType = none
@@ -108,33 +88,36 @@ func (t *Tokeniser) Tokenise() ([]string, error) {
 		return []string{}, t.err
 	}
 
+	// As per http://grokbase.com/t/gg/golang-nuts/139fgmycba
+	var bs [1]byte
+
 	for {
-		// First, tokenise everything in our buffer.
-		for ; t.rawpos < t.rawcount; t.rawpos++ {
-			t.tokeniseByte(t.raw[t.rawpos])
-			if t.err != nil {
-				return []string{}, t.err
-			}
-
-			// Have we finished a line?
-			// If so, clean up for another tokenising, and return it.
-			if t.lineDone {
-				// The t.rawpos++ above won't fire if we leave now.
-				// Thus, we need to do it here.
-				t.rawpos++
-
-				t.lineDone = false
-				line := t.words
-				t.words = []string{}
-				return line, nil
-			}
-		}
-		// We've run out of buffer now, so prod the Reader.
-		n, err := t.reader.Read(t.raw)
+		// Constantly grab one byte out of the Reader.
+		// Technically inefficient, but this will be done on network
+		// connections mainly anyway, so this shouldn't be the
+		// bottleneck.
+		n, err := t.reader.Read(bs[:])
 		if err != nil {
 			return []string{}, err
 		}
-		t.rawpos, t.rawcount = 0, n
+		// Spin until we get a byte.
+		if n == 0 {
+			continue
+		}
+
+		t.tokeniseByte(bs[0])
+		if t.err != nil {
+			return []string{}, t.err
+		}
+
+		// Have we finished a line?
+		// If so, clean up for another tokenising, and return it.
+		if t.lineDone {
+			t.lineDone = false
+			line := t.words
+			t.words = []string{}
+			return line, nil
+		}
 	}
 }
 
