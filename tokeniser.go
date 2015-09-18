@@ -95,33 +95,26 @@ func (t *Tokeniser) readByte() (b byte, err error) {
 // tokeniseByte tokenises a single byte.
 // It returns true if we've finished a line, which can only occur outside of
 // quotes
-func (t *Tokeniser) tokeniseByte(b byte) (endLine bool) {
-	endLine = false
-
+func (t *Tokeniser) tokeniseByte(b byte) bool {
 	if t.escapeNextChar {
 		t.put(b)
 		t.escapeNextChar = false
-		return
+		return false
 	}
 
-	switch t.currentQuoteType {
-	case none:
-		endLine = t.tokeniseNoQuotes(b)
-	case single:
-		t.tokeniseSingleQuotes(b)
-	case double:
-		t.tokeniseDoubleQuotes(b)
+	funcs := map[quoteType]func(b byte) bool{
+		none:   t.tokeniseNoQuotes,
+		single: t.tokeniseSingleQuotes,
+		double: t.tokeniseDoubleQuotes,
 	}
 
-	return
+	return funcs[t.currentQuoteType](b)
 }
 
 // tokeniseNoQuotes tokenises a single byte outside quote characters.
 // It returns true if we've finished a line, and any error that occurred while
 // tokenising.
-func (t *Tokeniser) tokeniseNoQuotes(b byte) (endLine bool) {
-	endLine = false
-
+func (t *Tokeniser) tokeniseNoQuotes(b byte) bool {
 	switch b {
 	case '\'':
 		// Switching into single quotes mode starts a word.
@@ -138,7 +131,7 @@ func (t *Tokeniser) tokeniseNoQuotes(b byte) (endLine bool) {
 	case '\n':
 		// We're ending the current word as well as a line.
 		t.endWord()
-		endLine = true
+		return true
 	default:
 		// Note that this will only check for ASCII
 		// whitespace, because we only pass it one byte
@@ -150,25 +143,25 @@ func (t *Tokeniser) tokeniseNoQuotes(b byte) (endLine bool) {
 		}
 	}
 
-	return
+	return false
 }
 
 // tokeniseSingleQuotes tokenises a single byte within single quotes.
-// It doesn't need to return whether we've finished a line, because we can't finish
-// a line in quotes.
-func (t *Tokeniser) tokeniseSingleQuotes(b byte) {
+// We can't finish a line in quotes, so it always returns false.
+func (t *Tokeniser) tokeniseSingleQuotes(b byte) bool {
 	switch b {
 	case '\'':
 		t.currentQuoteType = none
 	default:
 		t.put(b)
 	}
+
+	return false
 }
 
 // tokeniseDoubleQuotes tokenises a single byte within double quotes.
-// It doesn't need to return whether we've finished a line, because we can't finish
-// a line in quotes.
-func (t *Tokeniser) tokeniseDoubleQuotes(b byte) {
+// We can't finish a line in quotes, so it always returns false.
+func (t *Tokeniser) tokeniseDoubleQuotes(b byte) bool {
 	switch b {
 	case '"':
 		t.currentQuoteType = none
@@ -177,6 +170,8 @@ func (t *Tokeniser) tokeniseDoubleQuotes(b byte) {
 	default:
 		t.put(b)
 	}
+
+	return false
 }
 
 // put adds a byte to the Tokeniser's word.
