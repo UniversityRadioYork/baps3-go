@@ -57,24 +57,13 @@ func (t *Tokeniser) endWord() {
 //
 // Tokenise may return an error if the Reader chokes.
 func (t *Tokeniser) Tokenise() ([]string, error) {
-	// As per http://grokbase.com/t/gg/golang-nuts/139fgmycba
-	var bs [1]byte
-
 	for {
-		// Constantly grab one byte out of the Reader.
-		// Technically inefficient, but this will be done on network
-		// connections mainly anyway, so this shouldn't be the
-		// bottleneck.
-		n, err := t.reader.Read(bs[:])
+		abyte, err := t.readByte()
 		if err != nil {
 			return []string{}, err
 		}
-		// Spin until we get a byte.
-		if n == 0 {
-			continue
-		}
 
-		lineDone := t.tokeniseByte(bs[0])
+		lineDone := t.tokeniseByte(abyte)
 		// Have we finished a line?
 		// If so, clean up for another tokenising, and return it.
 		if lineDone {
@@ -83,6 +72,24 @@ func (t *Tokeniser) Tokenise() ([]string, error) {
 			return line, nil
 		}
 	}
+}
+
+// readByte pulls a single byte out of the Reader.
+// It spins until a successful write or error has been received.
+// It then the byte read and nil, or undefined and an error, respectively.
+func (t *Tokeniser) readByte() (b byte, err error) {
+	// As per http://grokbase.com/t/gg/golang-nuts/139fgmycba
+	var bs [1]byte
+
+	// Technically inefficient, but this will be done on network
+	// connections mainly anyway, so this shouldn't be the
+	// bottleneck.
+	for n := 0; n == 0 && err == nil; {
+		n, err = t.reader.Read(bs[:])
+	}
+
+	b = bs[0]
+	return
 }
 
 // tokeniseByte tokenises a single byte.
