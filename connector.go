@@ -7,16 +7,19 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	msg "github.com/UniversityRadioYork/bifrost-go/message"
+	"github.com/UniversityRadioYork/bifrost-go/tokeniser"
 )
 
 // Connector is a struct containing the internal state of a BAPS3 connector.
 type Connector struct {
 	state     string
 	time      time.Duration
-	tokeniser *Tokeniser
+	tokeniser *tokeniser.Tokeniser
 	conn      net.Conn
-	resCh     chan<- Message
-	ReqCh     chan Message
+	resCh     chan<- msg.Message
+	ReqCh     chan msg.Message
 	name      string
 	logger    *log.Logger
 	quit      chan struct{}
@@ -27,10 +30,10 @@ type Connector struct {
 // The returned Connector shall have the given name, send responses through the
 // response channel resCh, report termination via the wait group waitGroup, and
 // log to logger.
-func InitConnector(name string, resCh chan Message, logger *log.Logger) *Connector {
+func InitConnector(name string, resCh chan msg.Message, logger *log.Logger) *Connector {
 	c := new(Connector)
 	c.resCh = resCh
-	c.ReqCh = make(chan Message)
+	c.ReqCh = make(chan msg.Message)
 	c.name = name
 	c.logger = logger
 	c.quit = make(chan struct{})
@@ -46,7 +49,7 @@ func (c *Connector) Connect(hostport string) {
 		c.logger.Fatal(err)
 	}
 	c.conn = conn
-	c.tokeniser = NewTokeniser(c.conn)
+	c.tokeniser = tokeniser.New(c.conn)
 }
 
 // Quit synchronously terminates the connector, gracefully disconnecting from downstream
@@ -106,7 +109,7 @@ func (c *Connector) Run() {
 
 // handleResponses handles a response line from the BAPS3 server.
 func (c *Connector) handleResponse(line []string) error {
-	msg, err := LineToMessage(line)
+	msg, err := msg.LineToMessage(line)
 	if err != nil {
 		return err
 	}
