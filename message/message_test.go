@@ -1,32 +1,24 @@
-package bifrost
+package message
 
 import "testing"
 import "reflect"
-
-// cmpWords is defined in tokeniser_test.
-// TODO(CaptainHayashi): move cmpWords elsewhere?
 
 func TestMessageWord(t *testing.T) {
 	cases := []struct {
 		str     string
 		word    MessageWord
 		unknown bool
-		cmdResp bool
 	}{
 		// Ok, a request
-		{"load", RqLoad, false, false},
+		{"read", RqRead, false},
 		// Ok, a response
-		{"OHAI", RsOhai, false, false},
-		// Ok, an OK response
-		{"OK", RsOk, false, true},
-		// Ok, a WHAT response
-		{"WHAT", RsWhat, false, true},
+		{"OHAI", RsOhai, false},
 		// Unknown, but a request
-		{"uwot", RqUnknown, true, false},
+		{"uwot", RqUnknown, true},
 		// Unknown, but a response
-		{"MATE", RsUnknown, true, false},
+		{"MATE", RsUnknown, true},
 		// Unknown, and unclear what type of message
-		{"MaTe", BadWord, true, false},
+		{"MaTe", BadWord, true},
 	}
 
 	for _, c := range cases {
@@ -37,10 +29,6 @@ func TestMessageWord(t *testing.T) {
 		if c.word.IsUnknown() != c.unknown {
 			t.Errorf("%q.IsUnknown() == %q, want %q", c.word, !c.unknown, c.unknown)
 		}
-		if c.word.IsCommandResponse() != c.cmdResp {
-			t.Errorf("%q.IsCommandResponse() == %q, want %q", c.word, !c.cmdResp, c.cmdResp)
-		}
-
 		// Only do the other direction if it's a valid response
 		if !c.unknown {
 			gotstr := c.word.String()
@@ -57,28 +45,38 @@ func TestMessage(t *testing.T) {
 		msg   *Message
 	}{
 		// Empty request
-		{[]string{"play"}, NewMessage(RqPlay)},
+		{
+			[]string{"write"},
+			New(RqWrite),
+		},
 		// Request with one argument
-		{[]string{"load", "foo"}, NewMessage(RqLoad).AddArg("foo")},
+		{
+			[]string{"read", "/control/state"},
+			New(RqRead).AddArg("/control/state"),
+		},
 		// Request with multiple argument
-		{[]string{"enqueue", "0", "file", "blah"},
-			NewMessage(RqEnqueue).AddArg("0").AddArg("file").AddArg("blah"),
+		{
+			[]string{"write", "/player/time", "0"},
+			New(RqWrite).AddArg("/player/time").AddArg("0"),
 		},
 		// Empty response
-		{[]string{"END"}, NewMessage(RsEnd)},
+		{
+			[]string{"RES"},
+			New(RsRes),
+		},
 		// Response with one argument
-		{[]string{"FILE", "foo"}, NewMessage(RsFile).AddArg("foo")},
+		{
+			[]string{"OHAI", "playd 1.0.0"},
+			New(RsOhai).AddArg("playd 1.0.0"),
+		},
 		// Response with multiple argument
-		{[]string{"FAIL", "nou", "load", "blah"},
-			NewMessage(RsFail).AddArg("nou").AddArg("load").AddArg("blah"),
+		{
+			[]string{"ACK", "int", "OK", "1337"},
+			New(RsAck).AddArg("int").AddArg("OK").AddArg("1337"),
 		},
 	}
 
 	for _, c := range cases {
-		gotslice := c.msg.AsSlice()
-		if !cmpWords(gotslice, c.words) {
-			t.Errorf("%q.ToSlice() == %q, want %q", c.msg, gotslice, c.words)
-		}
 		gotword := LookupWord(c.words[0])
 		if gotword != c.msg.Word() {
 			t.Errorf("LookupWord(%q) == %q, but Word() == %q", c.words[0], gotword, c.msg.Word())
@@ -88,7 +86,7 @@ func TestMessage(t *testing.T) {
 	// And now, test args.
 	// TODO(CaptainHayashi): refactor the above to integrate this test
 	args := []string{"bibbity", "bobbity", "boo"}
-	msg := NewMessage(RsUnknown)
+	msg := New(RsUnknown)
 	for _, arg := range args {
 		msg.AddArg(arg)
 	}
@@ -115,6 +113,54 @@ func TestMessage(t *testing.T) {
 			t.Errorf("unexpected error with: %q", got)
 		} else if !reflect.DeepEqual(got, c.msg) {
 			t.Errorf("Got %q, wanted %q", got, c.msg)
+		}
+	}
+}
+
+func TestPack(t *testing.T) {
+	cases := []struct {
+		msg  *Message
+		want []byte
+	}{
+		// Unescaped command
+		{
+			&Message{RqWrite, []string{"uuid", "/player/file", "/home/donald/wjaz.mp3"}},
+			[]byte("write uuid /player/file /home/donald/wjaz.mp3\n"),
+		},
+		// Backslashes
+		{
+			&Message{RqWrite, []string{"uuid", "/player/file", `C:\silly\windows\is\silly`}},
+			[]byte(`write uuid /player/file 'C:\silly\windows\is\silly'` + "\n"),
+		},
+		// No args TODO: Can't happen any more?
+		{
+			&Message{RqRead, []string{}},
+			[]byte("read\n"),
+		},
+		// Spaces
+		{
+			&Message{RqWrite, []string{"uuid", "/player/file", "/home/donald/01 The Nightfly.mp3"}},
+			[]byte("write uuid /player/file '/home/donald/01 The Nightfly.mp3'\n"),
+		},
+		// Single quotes
+		{
+			&Message{RsOhai, []string{"a'bar'b"}},
+			[]byte(`OHAI 'a'\''bar'\''b'` + "\n"),
+		},
+		// Double quotes
+		{
+			&Message{RsOhai, []string{`a"bar"b`}},
+			[]byte(`OHAI 'a"bar"b'` + "\n"),
+		},
+	}
+
+	for _, c := range cases {
+		got, err := c.msg.Pack()
+		if err != nil {
+			t.Errorf("Message.Pack(%q) encountered error %q", c.msg, err)
+		}
+		if !reflect.DeepEqual(c.want, got) {
+			t.Errorf("Message.Pack(%q) == %q, want %q", c.msg, got, c.want)
 		}
 	}
 }

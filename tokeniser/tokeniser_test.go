@@ -1,6 +1,8 @@
-package bifrost
+package tokeniser
 
 import (
+	"bytes"
+	"io"
 	"testing"
 )
 
@@ -30,7 +32,6 @@ func cmpWords(a []string, b []string) bool {
 	}
 
 	return true
-
 }
 
 func TestTokenise(t *testing.T) {
@@ -157,14 +158,7 @@ func TestTokenise(t *testing.T) {
 			"北野 武\n",
 			[][]string{[]string{"北野", "武"}},
 		},
-		// U2 - Not UTF-8 (ISO-8859-1).
-		// Should replace bad byte with the Unicode replacement
-		// character.  See example at:
-		// https://en.wikipedia.org/wiki/Unicode_replacement_character
-		{
-			"f\xfcr\n",
-			[][]string{[]string{"f\xef\xbf\xbdr"}},
-		},
+		// U2 intentionally left blank.
 		// X1 - Sample BAPS3 command, with double-quoted Windows path
 		{
 			`enqueue file "C:\\Users\\Test\\Artist - Title.mp3" 1` + "\n",
@@ -175,9 +169,26 @@ func TestTokenise(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		tok := NewTokeniser()
-		got, _, err := tok.Tokenise([]byte(c.in))
-		if err != nil {
+		br := bytes.NewReader([]byte(c.in))
+		tok := New(br)
+
+		var (
+			got  [][]string
+			err  error
+			line []string
+		)
+
+		for {
+			line, err = tok.Tokenise()
+
+			if err != nil {
+				break
+			}
+
+			got = append(got, line)
+		}
+
+		if err != io.EOF {
 			t.Errorf("Tokenise(%q) gave error %q", c.in, err)
 		}
 		if !cmpLines(got, c.want) {

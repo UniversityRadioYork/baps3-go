@@ -1,41 +1,43 @@
 package bifrost
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"math"
 	"net"
 	"sync"
 	"time"
+
+	msg "github.com/UniversityRadioYork/bifrost-go/message"
+	"github.com/UniversityRadioYork/bifrost-go/tokeniser"
 )
 
 // Connector is a struct containing the internal state of a BAPS3 connector.
 type Connector struct {
 	state     string
 	time      time.Duration
-	tokeniser *Tokeniser
+	tokeniser *tokeniser.Tokeniser
 	conn      net.Conn
-	buf       *bufio.Reader
-	resCh     chan<- Message
-	ReqCh     chan Message
+	resCh     chan<- msg.Message
+	ReqCh     chan msg.Message
 	name      string
-	wg        *sync.WaitGroup
 	logger    *log.Logger
+	quit      chan struct{}
+	wg        *sync.WaitGroup
 }
 
 // InitConnector creates and returns a Connector.
 // The returned Connector shall have the given name, send responses through the
 // response channel resCh, report termination via the wait group waitGroup, and
 // log to logger.
-func InitConnector(name string, resCh chan Message, waitGroup *sync.WaitGroup, logger *log.Logger) *Connector {
+func InitConnector(name string, resCh chan msg.Message, logger *log.Logger) *Connector {
 	c := new(Connector)
-	c.tokeniser = NewTokeniser()
 	c.resCh = resCh
-	c.ReqCh = make(chan Message)
+	c.ReqCh = make(chan msg.Message)
 	c.name = name
-	c.wg = waitGroup
 	c.logger = logger
+	c.quit = make(chan struct{})
+	c.wg = new(sync.WaitGroup)
 	return c
 }
 
@@ -47,75 +49,76 @@ func (c *Connector) Connect(hostport string) {
 		c.logger.Fatal(err)
 	}
 	c.conn = conn
-	c.buf = bufio.NewReader(c.conn)
+	c.tokeniser = tokeniser.New(c.conn)
+}
+
+// Quit synchronously terminates the connector, gracefully disconnecting from downstream
+func (c *Connector) Quit() {
+	c.quit <- struct{}{}
+	c.wg.Wait()
 }
 
 // Run is the main connector loop, reading bytes off the wire, tokenising and handling
 // responses.
 func (c *Connector) Run() {
-	lineCh := make(chan [][]string, 3)
+	lineCh := make(chan []string, 3)
 	errCh := make(chan error)
 
 	// Spin up a goroutine to accept and tokenise incoming bytes, and spit them
 	// out in a channel
-	go func(lineCh chan [][]string, eCh chan error) {
+	go func(lineCh chan []string, eCh chan error) {
 		for {
-			data, err := c.buf.ReadBytes('\n')
-			if err != nil {
-				errCh <- err
-			}
 			// TODO(CaptainHayashi): more robust handling of an
 			// error from Tokenise?
-			lines, _, err := c.tokeniser.Tokenise(data)
+			line, err := c.tokeniser.Tokenise()
 			if err != nil {
-				errCh <- err
+				eCh <- err
 			}
-			lineCh <- lines
+			lineCh <- line
 		}
 	}(lineCh, errCh)
 
 	// Main run loop, select on new received lines, errors or incoming requests
+	c.wg.Add(1)
 	for {
 		select {
-		case lines := <-lineCh:
-			c.handleResponses(lines)
+		case line := <-lineCh:
+			if err := c.handleResponse(line); err != nil {
+				c.logger.Println(err)
+			}
 		case err := <-errCh:
 			c.logger.Fatal(err)
-		case req, ok := <-c.ReqCh:
-			if !ok { // Other end closed the channel, shut down
-				c.logger.Println(c.name + " Connector shutting down")
-				err := c.conn.Close()
-				if err != nil {
-					c.logger.Println(err)
-				}
-				c.wg.Done()
-				return
-			}
+		case req := <-c.ReqCh:
 			data, err := req.Pack()
 			if err != nil {
 				c.logger.Println(err)
 			} else {
 				c.conn.Write(data)
 			}
+		case <-c.quit:
+			c.logger.Println(c.name + " Connector shutting down")
+			err := c.conn.Close()
+			if err != nil {
+				c.logger.Println(err)
+			}
+			c.wg.Done()
+			return
 		}
 	}
 }
 
-// handleResponses handles a series of response lines from the BAPS3 server.
-func (c *Connector) handleResponses(lines [][]string) {
-	for _, line := range lines {
-		msg, err := LineToMessage(line)
-		if err != nil {
-			c.logger.Println(err)
-			continue
-		}
+// handleResponses handles a response line from the BAPS3 server.
+func (c *Connector) handleResponse(line []string) error {
+	msg, err := msg.LineToMessage(line)
+	if err != nil {
+		return err
+	}
 
-		if msg.Word().IsUnknown() {
-			continue
-		}
-
+	if !msg.Word().IsUnknown() {
 		c.resCh <- *msg
 	}
+
+	return nil
 }
 
 // PrettyDuration pretty-prints a duration in the form minutes:seconds.
