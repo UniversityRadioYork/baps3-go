@@ -132,7 +132,7 @@ func (m *Message) AddArg(arg string) *Message {
 	return m
 }
 
-func escapeArgument(input string) (output string) {
+func escapeArgument(input string) string {
 	return "'" + strings.Replace(input, "'", `'\''`, -1) + "'"
 }
 
