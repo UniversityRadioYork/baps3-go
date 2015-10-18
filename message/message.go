@@ -7,119 +7,46 @@ import (
 	"unicode"
 )
 
-// MessageWord is a token representing a message word known to Bifrost.
-// While the BAPS3 API allows for arbitrarily many message words to exist, we
-// only handle a small, finite set of them.  For simplicity of later
-// comparison, we 'intern' the ones we know by converting them to a MessageWord
-// upon creation of the Message representing their parent message.
-type MessageWord int
-
 const (
-	// Message word constants.
-	//
-	// When adding to this, also add the string equivalent to LookupRequest and
-	// LookupResponse.
-	//
-	// Also note that the use of the same iota-run of numbers for requests,
-	// responses and errors is intentional, because all three series of
-	// message are conveyed in the same struct, parsed by the same
-	// functions, and consequently the message word is referenced by code
-	// with no understanding of whether the word pertains to a request, a
-	// response, or something completely different.
-	//
-
-	// BadWord denotes a message with an unknown and ill-formed word.
-	BadWord MessageWord = iota
+	// Standard Bifrost message word constants.
 
 	// - Requests
 
-	// RqUnknown denotes a message with an unknown but valid request word.
-	RqUnknown
-
 	// RqRead denotes a 'read' request message.
-	RqRead
+	RqRead string = "read"
 
 	// RqWrite denotes a 'write' request message.
-	RqWrite
+	RqWrite string = "write"
 
 	// RqDelete denotes a 'delete' request message.
-	RqDelete
+	RqDelete string = "delete"
 
 	// - Responses
 
-	// RsUnknown denotes a message with an unknown but valid response word.
-	RsUnknown
-
 	// RsRes denotes a message with the 'RES' response.
-	RsRes
+	RsRes string = "RES"
 
-	// RsUpdate denotes a message with the 'RES' response.
-	RsUpdate
+	// RsUpdate denotes a message with the 'UPDATE' response.
+	RsUpdate string = "UPDATE"
 
 	// RsAck denotes a message with the 'ACK' response.
-	RsAck
+	RsAck string = "ACK"
 
 	// RsOhai denotes a message with the 'OHAI' response.
-	RsOhai
+	RsOhai string = "OHAI"
 )
 
-// Go can't do constant arrays :(
-var wordStrings = []string{
-	"<BAD WORD>",         // BadWord
-	"<UNKNOWN REQUEST>",  // RqUnknown
-	"read",               // RqRead
-	"write",              // RqWrite
-	"delete",             // RqDelete
-	"<UNKNOWN RESPONSE>", // RsUnknown
-	"RES",                // RsRes
-	"UPDATE",             // RsUpdate
-	"ACK",                // RsAck
-	"OHAI",               // RsOhai
-}
-
-func (word MessageWord) String() string {
-	return wordStrings[int(word)]
-}
-
-// IsUnknown returns whether word represents an unknown message word.
-func (word MessageWord) IsUnknown() bool {
-	return word == BadWord || word == RqUnknown || word == RsUnknown
-}
-
-// LookupWord finds the equivalent MessageWord for a string.
-// If the message word is not known, it will check whether the word is a
-// valid request (all lowercase) or a valid response (all uppercase),
-// returning RqUnknown or RsUnknown respectively.  Failing this, it will return
-// BadWord.
-func LookupWord(word string) MessageWord {
-	// This is O(n) on the size of WordStrings, which is unfortunate, but
-	// probably ok.
-	for i, str := range wordStrings {
-		if str == word {
-			return MessageWord(i)
-		}
-	}
-
-	// In BAPS3, lowercase words are requests; uppercase words are responses.
-	if strings.ToLower(word) == word {
-		return RqUnknown
-	} else if strings.ToUpper(word) == word {
-		return RsUnknown
-	}
-	return BadWord
-}
-
 // Message is a structure representing a full BAPS3 message.
-// It is comprised of a word, which is stored as a MessageWord, and zero or
+// It is comprised of a word, which is stored as a string, and zero or
 // more string arguments.
 type Message struct {
-	word MessageWord
+	word string
 	args []string
 }
 
 // New creates and returns a new Message with the given message word.
 // The message will initially have no arguments; use AddArg to add arguments.
-func New(word MessageWord) *Message {
+func New(word string) *Message {
 	return &Message{
 		word: word,
 	}
@@ -142,7 +69,7 @@ func escapeArgument(input string) string {
 func (m *Message) Pack() (packed []byte, err error) {
 	output := new(bytes.Buffer)
 
-	_, err = output.WriteString(m.word.String())
+	_, err = output.WriteString(m.word)
 	if err != nil {
 		return
 	}
@@ -167,8 +94,8 @@ func (m *Message) Pack() (packed []byte, err error) {
 	return
 }
 
-// Word returns the MessageWord of the given Message.
-func (m *Message) Word() MessageWord {
+// Word returns the message word of the given Message.
+func (m *Message) Word() string {
 	return m.word
 }
 
@@ -191,8 +118,10 @@ func (m *Message) Arg(index int) (arg string, err error) {
 	return
 }
 
+// String returns a string representation of a Message.
+// This is not the wire representation: use Pack instead.
 func (m *Message) String() (outstr string) {
-	outstr = m.word.String()
+	outstr = m.word
 	for _, s := range m.args {
 		outstr += " " + s
 	}
@@ -204,7 +133,7 @@ func LineToMessage(line []string) (msg *Message, err error) {
 	if len(line) == 0 {
 		err = fmt.Errorf("cannot construct message from zero words")
 	} else {
-		msg = New(LookupWord(line[0]))
+		msg = New(line[0])
 		for _, arg := range line[1:] {
 			msg.AddArg(arg)
 		}
