@@ -114,10 +114,7 @@ func (c *Connector) handleResponse(line []string) error {
 		return err
 	}
 
-	if !msg.Word().IsUnknown() {
-		c.resCh <- *msg
-	}
-
+	c.resCh <- *msg
 	return nil
 }
 
