@@ -21,9 +21,9 @@ func (r *Resource) String() string {
 // generating it.
 //
 // TODO(CaptainHayashi): does this belong elsewhere?
-func (r *Resource) Message(tag string) *msg.Message {
+func (r *Resource) Message(tag string) msg.Message {
 	vtype, val := r.value.ResourceBody()
-	return msg.New(msg.RsRes).AddArg(tag).AddArg("/" + strings.Join(r.path, "/")).AddArg(vtype).AddArg(val)
+	return msg.Res(tag, "/"+strings.Join(r.path, "/"), vtype, val)
 }
 
 // TODO(CaptainHayashi): Do we need all this machinery?
