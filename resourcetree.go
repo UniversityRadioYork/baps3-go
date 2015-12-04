@@ -7,25 +7,13 @@ import (
 	"strings"
 )
 
-// splitPath splits a resource path separated by /'s into segments, ignoring leading/trailing /'s and
-// empty segments
+// splitPath splits a resource path separated by /'s into segments
+// (ignoring leading/trailing /'s and empty segments)
 func splitPath(path string) []string {
-	splitPath := []string{}
-	var currentSegment string
-	for _, c := range path {
-		if c == '/' {
-			if currentSegment != "" {
-				splitPath = append(splitPath, currentSegment)
-				currentSegment = ""
-			}
-		} else {
-			currentSegment += string(c)
-		}
+	f := func(c rune) bool {
+		return c == '/'
 	}
-	if currentSegment != "" {
-		splitPath = append(splitPath, currentSegment) // Whatever we have left
-	}
-	return splitPath
+	return strings.FieldsFunc(path, f)
 }
 
 type Response struct {
