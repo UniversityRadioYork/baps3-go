@@ -41,6 +41,11 @@ func TestPack(t *testing.T) {
 			Message{RsOhai, `a"bar"b`},
 			[]byte(`OHAI 'a"bar"b'` + "\n"),
 		},
+		// Single word (shouldn't ever be used)
+		{
+			Message{RsOhai},
+			[]byte("OHAI\n"),
+		},
 	}
 
 	for _, c := range cases {

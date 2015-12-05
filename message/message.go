@@ -24,7 +24,7 @@ const (
 	// RsRes denotes a message with the 'RES' response.
 	RsRes = "RES"
 
-	// RsUpdate denotes a message with the 'RES' response.
+	// RsUpdate denotes a message with the 'UPDATE' response.
 	RsUpdate = "UPDATE"
 
 	// RsAck denotes a message with the 'ACK' response.
@@ -87,6 +87,7 @@ func escapeArgument(input string) string {
 // Pack outputs the given Message as raw bytes representing a BAPS3 message.
 // These bytes can be sent down a TCP connection to a BAPS3 server, providing
 // they are terminated using a line-feed character.
+// Note that this will panic if used on an empty Message.
 func (m Message) Pack() []byte {
 	outstr := m[0]
 	for _, a := range m[1:] {
