@@ -83,18 +83,12 @@ func (c *Connector) Run() {
 	for {
 		select {
 		case line := <-lineCh:
-			if err := c.handleResponse(line); err != nil {
-				c.logger.Println(err)
-			}
+			c.handleResponse(line)
 		case err := <-errCh:
 			c.logger.Fatal(err)
 		case req := <-c.ReqCh:
-			data, err := req.Pack()
-			if err != nil {
-				c.logger.Println(err)
-			} else {
-				c.conn.Write(data)
-			}
+			data := req.Pack()
+			c.conn.Write(data)
 		case <-c.quit:
 			c.logger.Println(c.name + " Connector shutting down")
 			err := c.conn.Close()
@@ -108,14 +102,9 @@ func (c *Connector) Run() {
 }
 
 // handleResponses handles a response line from the BAPS3 server.
-func (c *Connector) handleResponse(line []string) error {
-	msg, err := msg.LineToMessage(line)
-	if err != nil {
-		return err
-	}
-
-	c.resCh <- *msg
-	return nil
+func (c *Connector) handleResponse(line []string) {
+	msg := msg.Message(line)
+	c.resCh <- msg
 }
 
 // PrettyDuration pretty-prints a duration in the form minutes:seconds.

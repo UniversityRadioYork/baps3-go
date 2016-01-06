@@ -1,62 +1,83 @@
 package message
 
 import (
-	"bytes"
-	"fmt"
 	"strings"
 	"unicode"
 )
 
 const (
-	// Standard Bifrost message word constants.
+	// Message word constants.
 
 	// - Requests
 
 	// RqRead denotes a 'read' request message.
-	RqRead string = "read"
+	RqRead = "read"
 
 	// RqWrite denotes a 'write' request message.
-	RqWrite string = "write"
+	RqWrite = "write"
 
 	// RqDelete denotes a 'delete' request message.
-	RqDelete string = "delete"
+	RqDelete = "delete"
 
 	// - Responses
 
 	// RsRes denotes a message with the 'RES' response.
-	RsRes string = "RES"
+	RsRes = "RES"
 
 	// RsUpdate denotes a message with the 'UPDATE' response.
-	RsUpdate string = "UPDATE"
+	RsUpdate = "UPDATE"
 
 	// RsAck denotes a message with the 'ACK' response.
-	RsAck string = "ACK"
+	RsAck = "ACK"
 
 	// RsOhai denotes a message with the 'OHAI' response.
-	RsOhai string = "OHAI"
+	RsOhai = "OHAI"
+
+	// AckOk denotes an ACK message with the 'OK' type.
+	AckOk = "OK"
+
+	// AckWhat denotes an ACK message with the 'WHAT' type.
+	AckWhat = "WHAT"
+
+	// AckFail denotes an ACK message with the 'FAIL' type.
+	AckFail = "FAIL"
 )
 
-// Message is a structure representing a full BAPS3 message.
-// It is comprised of a word, which is stored as a string, and zero or
-// more string arguments.
-type Message struct {
-	word string
-	args []string
+type Message []string
+
+// Read constructs a 'read' request command, with tag and path to be read.
+func Read(tag, path string) Message {
+	return Message{RqRead, tag, path}
 }
 
-// New creates and returns a new Message with the given message word.
-// The message will initially have no arguments; use AddArg to add arguments.
-func New(word string) *Message {
-	return &Message{
-		word: word,
-	}
+// Write constructs a 'write' request command, with tag, path to be written
+// to and value to write.
+func Write(tag, path, value string) Message {
+	return Message{RqWrite, tag, path, value}
 }
 
-// AddArg adds the given argument to a Message in-place.
-// The given Message-pointer is returned, to allow for chaining.
-func (m *Message) AddArg(arg string) *Message {
-	m.args = append(m.args, arg)
-	return m
+// Delete constructs a 'delete' request command, with tag and path to be deleted.
+func Delete(tag, path string) Message {
+	return Message{RqDelete, tag, path}
+}
+
+// Res constructs a 'RES' response command, with tag, path, type of value and
+// actual value of said path.
+func Res(tag, path, val_type, value string) Message {
+	return Message{RsRes, tag, path, val_type, value}
+}
+
+// Update constructs an 'UPDATE' response command, with path that's been
+// updated and the path's new value with its type.
+func Update(path, val_type, value string) Message {
+	return Message{RsUpdate, path, val_type, value}
+}
+
+// Ack constructs an 'ACK' response command, with the type of ACK and message,
+// followed by the original request command.
+func Ack(ack_type, msg string, orig_cmd Message) Message {
+	resp := Message{RsAck, ack_type, msg}
+	return append(resp, orig_cmd...)
 }
 
 func escapeArgument(input string) string {
@@ -66,15 +87,10 @@ func escapeArgument(input string) string {
 // Pack outputs the given Message as raw bytes representing a BAPS3 message.
 // These bytes can be sent down a TCP connection to a BAPS3 server, providing
 // they are terminated using a line-feed character.
-func (m *Message) Pack() (packed []byte, err error) {
-	output := new(bytes.Buffer)
-
-	_, err = output.WriteString(m.word)
-	if err != nil {
-		return
-	}
-
-	for _, a := range m.args {
+// Note that this will panic if used on an empty Message.
+func (m Message) Pack() []byte {
+	outstr := m[0]
+	for _, a := range m[1:] {
 		// Escape arg if needed
 		for _, c := range a {
 			if c < unicode.MaxASCII && (unicode.IsSpace(c) || strings.ContainsRune(`'"\`, c)) {
@@ -82,62 +98,18 @@ func (m *Message) Pack() (packed []byte, err error) {
 				break
 			}
 		}
-
-		_, err = output.WriteString(" " + a)
-		if err != nil {
-			return
-		}
+		outstr += " " + a
 	}
-	output.WriteString("\n")
-
-	packed = output.Bytes()
-	return
+	outstr += "\n"
+	return []byte(outstr)
 }
 
-// Word returns the message word of the given Message.
-func (m *Message) Word() string {
-	return m.word
-}
-
-// Args returns the slice of Arguments.
-func (m *Message) Args() []string {
-	return m.args
-}
-
-// Arg returns the index-th argument of the given Message.
-// The first argument is argument 0.
-// If the argument does not exist, an error is returned via err.
-func (m *Message) Arg(index int) (arg string, err error) {
-	if index < 0 {
-		err = fmt.Errorf("got negative index %d", index)
-	} else if len(m.args) <= index {
-		err = fmt.Errorf("wanted argument %d, only %d arguments", index, len(m.args))
-	} else {
-		arg = m.args[index]
-	}
-	return
-}
-
-// String returns a string representation of a Message.
-// This is not the wire representation: use Pack instead.
-func (m *Message) String() (outstr string) {
-	outstr = m.word
-	for _, s := range m.args {
+// Converts a message into a string representation. Note that it doesn't escape
+// the arguments, so is likely only useful for logging and debugging.
+func (m Message) String() string {
+	outstr := m[0]
+	for _, s := range m[1:] {
 		outstr += " " + s
 	}
-	return
-}
-
-// lineToMessage constructs a Message struct from a line of word-strings.
-func LineToMessage(line []string) (msg *Message, err error) {
-	if len(line) == 0 {
-		err = fmt.Errorf("cannot construct message from zero words")
-	} else {
-		msg = New(line[0])
-		for _, arg := range line[1:] {
-			msg.AddArg(arg)
-		}
-	}
-
-	return
+	return outstr
 }
