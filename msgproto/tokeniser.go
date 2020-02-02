@@ -1,23 +1,74 @@
-package tokeniser
+package msgproto
 
 import (
 	"io"
 	"unicode"
 )
 
-// quoteType represents one of the types of quoting used in the BAPS3 protocol.
+// quoteType represents one of the types of quoting used in the Bifrost protocol.
 type quoteType int
 
 const (
-	// none represents the state between quoted parts of a BAPS3 message.
+	// none represents the state between quoted parts of a Bifrost message.
 	none quoteType = iota
 
-	// single represents 'single quoted' parts of a BAPS3 message.
+	// single represents 'single quoted' parts of a Bifrost message.
 	single
 
-	// double represents "double quoted" parts of a BAPS3 message.
+	// double represents "double quoted" parts of a Bifrost message.
 	double
 )
+
+// ReaderTokeniser adapts a Tokeniser to deal with a Reader.
+type ReaderTokeniser struct {
+	tok    *Tokeniser
+	reader io.Reader
+	buf    [4096]byte
+	pos    int
+	max    int
+}
+
+// tokeniseUntilLine drains t's internal buffer into its tokeniser until it runs out or produces a line.
+func (t *ReaderTokeniser) tokeniseUntilLine() (line []string, lineok bool) {
+	var nread int
+	for t.pos < t.max && !lineok {
+		nread, lineok, line = t.tok.TokeniseBytes(t.buf[t.pos:t.max])
+		t.pos += nread
+	}
+	return
+}
+
+// fillFromReader fills t's internal buffer using its reader.
+// It can fail with errors from the reader.
+func (t *ReaderTokeniser) fillFromReader() (err error) {
+	t.pos = 0
+	t.max, err = t.reader.Read(t.buf[:])
+	return
+}
+
+// ReadLine reads a tokenised line from the Reader.
+// ReadLine may return an error if the Reader chokes.
+func (t *ReaderTokeniser) ReadLine() ([]string, error) {
+	for {
+		if line, lineok := t.tokeniseUntilLine(); lineok {
+			return line, nil
+		}
+		if err := t.fillFromReader(); err != nil {
+			return []string{}, err
+		}
+	}
+}
+
+// NewReaderTokeniser creates and returns a new, empty ReaderTokeniser.
+// The ReaderTokeniser will read from the given Reader when Tokenise is called.
+func NewReaderTokeniser(reader io.Reader) *ReaderTokeniser {
+	return &ReaderTokeniser{
+		tok:    NewTokeniser(),
+		reader: reader,
+		pos:    0,
+		max:    0,
+	}
+}
 
 // Tokeniser holds the state of a Bifrost protocol tokeniser.
 type Tokeniser struct {
@@ -26,19 +77,16 @@ type Tokeniser struct {
 	currentQuoteType quoteType
 	word             []byte
 	words            []string
-	reader           io.Reader
 }
 
 // NewTokeniser creates and returns a new, empty Tokeniser.
-// The Tokeniser will read from the given Reader when Tokenise is called.
-func New(reader io.Reader) *Tokeniser {
+func NewTokeniser() *Tokeniser {
 	return &Tokeniser{
 		escapeNextChar:   false,
 		currentQuoteType: none,
 		word:             []byte{},
 		inWord:           false,
 		words:            []string{},
-		reader:           reader,
 	}
 }
 
@@ -53,46 +101,30 @@ func (t *Tokeniser) endWord() {
 	t.inWord = false
 }
 
-// Tokenise reads a tokenised line from the Reader.
-//
-// Tokenise may return an error if the Reader chokes.
-func (t *Tokeniser) Tokenise() ([]string, error) {
-	for {
-		abyte, err := t.readByte()
-		if err != nil {
-			return []string{}, err
-		}
+// TokeniseBytes tokenises an array of bytes.
+// It returns the number of bytes read, whether or not it read a line, and the line contents if true.
+func (t *Tokeniser) TokeniseBytes(bs []byte) (nread int, lineok bool, line []string) {
+	nread = 0
+	lineok = false
 
-		lineDone := t.tokeniseByte(abyte)
-		// Have we finished a line?
-		// If so, clean up for another tokenising, and return it.
-		if lineDone {
-			line := t.words
+	if len(bs) == 0 {
+		return
+	}
+
+	for i := 0; i < len(bs); i++ {
+		if t.tokeniseByte(bs[i]) {
+			nread = i + 1
+			lineok = true
+			line = t.words
 			t.words = []string{}
-			return line, nil
+			return
 		}
 	}
-}
 
-// readByte pulls a single byte out of the Reader.
-// It spins until a successful write or error has been received.
-// It then the byte read and nil, or undefined and an error, respectively.
-func (t *Tokeniser) readByte() (b byte, err error) {
-	// As per http://grokbase.com/t/gg/golang-nuts/139fgmycba
-	var bs [1]byte
-
-	// Technically inefficient, but this will be done on network
-	// connections mainly anyway, so this shouldn't be the
-	// bottleneck.
-	for n := 0; n == 0 && err == nil; {
-		n, err = t.reader.Read(bs[:])
-	}
-
-	b = bs[0]
 	return
 }
 
-// tokeniseByte tokenises a single byte.
+// tokeniseByte tokenises a single byte b.
 // It returns true if we've finished a line, which can only occur outside of
 // quotes
 func (t *Tokeniser) tokeniseByte(b byte) bool {
