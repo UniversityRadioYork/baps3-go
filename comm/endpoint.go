@@ -2,6 +2,7 @@ package comm
 
 import (
 	"context"
+	"errors"
 
 	"github.com/UniversityRadioYork/bifrost-go/message"
 )
@@ -18,7 +19,22 @@ type Endpoint struct {
 	Tx chan<- message.Message
 }
 
-// Send tries to send a request on an Endpoint, modulo a context.
+// Recv tries to receive a message on an Endpoint, modulo a context.
+// It errors if the given context has been cancelled.
+//
+// Recv is just sugar over a Select between Rx and ctx.Done(), and it is
+// ok to do this manually using the channels themselves.
+func (e *Endpoint) Recv(ctx context.Context) (*message.Message, error) {
+	select {
+	case r := <- e.Rx:
+		return &r, nil
+	case <-ctx.Done():
+	}
+
+	return nil, errors.New("context cancelled during receive")
+}
+
+// Send tries to send a message on an Endpoint, modulo a context.
 // It returns false if the given context has been cancelled.
 //
 // Send is just sugar over a Select between Tx and ctx.Done(), and it is

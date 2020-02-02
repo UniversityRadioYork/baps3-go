@@ -28,7 +28,7 @@ func testEndpointTxRx(t *testing.T, tx chan<- message.Message, rx <-chan message
 	message.AssertMessagesEqual(t, "tx/rx", &got, want)
 }
 
-func TestEndpoint_Send(t *testing.T) {
+func TestEndpoint_SendReceive(t *testing.T) {
 	l, r := NewEndpointPair()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -40,16 +40,20 @@ func TestEndpoint_Send(t *testing.T) {
 		}
 	}()
 
-	got := <-r.Rx
-	message.AssertMessagesEqual(t, "send/rx", &got, want)
+	got, err := r.Recv(ctx)
+	if err != nil {
+		t.Fatalf("recv errored: %v", err)
+	}
+	message.AssertMessagesEqual(t, "send/rx", got, want)
 
-	// After cancelling, sends should fail.
+	// After cancelling, sends and receives should fail.
 	cancel()
 
-	go func() {
-		if l.Send(ctx, *want) {
-			t.Error("send succeeded unexpectedly")
-		}
-	}()
+	if l.Send(ctx, *want) {
+		t.Error("send succeeded unexpectedly")
+	}
 
+	if _, err := r.Recv(ctx); err == nil {
+		t.Error("recv succeeded unexpectedly")
+	}
 }
