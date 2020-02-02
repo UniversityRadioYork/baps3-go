@@ -1,10 +1,10 @@
-package corecmd
+package core
 
 import (
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
-// File corecmd/ack.go describes parsing and emitting routines for the ACK core request.
+// File core/ack.go describes parsing and emitting routines for the ACK core request.
 
 const (
 	// RsAck is the Bifrost response word ACK.
@@ -30,8 +30,8 @@ var AckOk = AckResponse{
 }
 
 // Message converts an AckResponse into an ACK message with tag tag.
-func (a *AckResponse) Message(tag string) *msgproto.Message {
-	return msgproto.NewMessage(tag, RsAck).AddArgs(a.Status.String(), a.Description)
+func (a *AckResponse) Message(tag string) *message.Message {
+	return message.New(tag, RsAck).AddArgs(a.Status.String(), a.Description)
 }
 
 // ErrorAck converts an error err into an AckResponse.
@@ -48,7 +48,7 @@ func ErrorAck(err error) *AckResponse {
 }
 
 // ParseAckResponse tries to parse an arbitrary message as an ACK response.
-func ParseAckResponse(m *msgproto.Message) (*AckResponse, error) {
+func ParseAckResponse(m *message.Message) (*AckResponse, error) {
 	var err error
 	if err = CheckWord(RsAck, m); err != nil {
 		return nil, err

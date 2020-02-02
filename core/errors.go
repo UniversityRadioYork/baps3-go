@@ -1,14 +1,14 @@
-package corecmd
+package core
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
-// File corecmd/errors contains structured errors for core request/response parsers.
+// File core/errors contains structured errors for core request/response parsers.
 
 // WordError is sent when a parser expects one word, but parses another.
 type WordError struct {
@@ -30,7 +30,7 @@ func (w WordError) Blame() Blame {
 // CheckWord checks to see if the message m has the command words want, up to any whitespace.
 // It returns a WordError if not.
 // CheckWord is case sensitive, because uppercase and lowercase words have different meanings.
-func CheckWord(want string, m *msgproto.Message) error {
+func CheckWord(want string, m *message.Message) error {
 	got := m.Word()
 	if want != strings.TrimSpace(got) {
 		return WordError{Got: got, Want: want}
@@ -74,7 +74,7 @@ func (a ArityError) Blame() Blame {
 
 // CheckArity checks to see if the number of arguments in message m is between min and max inclusive.
 // It returns the arguments if so, and an ArityError if not.
-func CheckArity(min, max int, m *msgproto.Message) (got []string, err error) {
+func CheckArity(min, max int, m *message.Message) (got []string, err error) {
 	got = m.Args()
 	l := len(got)
 	if l < min || max < l {
@@ -86,7 +86,7 @@ func CheckArity(min, max int, m *msgproto.Message) (got []string, err error) {
 // OneArg checks to see if m has one argument precisely.
 // If so, OneArg returns it.
 // If not, OneArg returns an ArityError.
-func OneArg(m *msgproto.Message) (arg string, err error) {
+func OneArg(m *message.Message) (arg string, err error) {
 	var got []string
 	if got, err = CheckArity(1, 1, m); err != nil {
 		return "", err
@@ -97,7 +97,7 @@ func OneArg(m *msgproto.Message) (arg string, err error) {
 // TwoArgs checks to see if m has two arguments precisely.
 // If so, TwoArgs returns them.
 // If not, TwoArgs returns an ArityError.
-func TwoArgs(m *msgproto.Message) (arg1, arg2 string, err error) {
+func TwoArgs(m *message.Message) (arg1, arg2 string, err error) {
 	var got []string
 	if got, err = CheckArity(2, 2, m); err != nil {
 		return "", "", err

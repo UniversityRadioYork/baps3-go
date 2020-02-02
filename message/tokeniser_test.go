@@ -1,4 +1,4 @@
-package msgproto
+package message
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ func TestReaderTokeniser(t *testing.T) {
 	// TODO(CaptainHayashi): add partial-line tests.
 
 	// Tests adapted from (and labelled with respect to):
-	// http://universityradioyork.github.io/baps3-spec/comms/internal/protocol.html#examples
+	// http://universityradioyork.github.io/baps3-spec/bifrost/message/tests.html
 
 	cases := []struct {
 		in   string

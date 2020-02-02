@@ -1,15 +1,15 @@
-package corecmd
+package core
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 // ExampleParseIamaResponse is a testable example for ParseIamaResponse.
 func ExampleParseIamaResponse() {
-	m := msgproto.NewMessage(msgproto.TagBcast, RsOhai).AddArgs("test-0.2.0", "example-42.0.0")
+	m := message.New(message.TagBcast, RsOhai).AddArgs("test-0.2.0", "example-42.0.0")
 	if o, err := ParseOhaiResponse(m); err != nil {
 		fmt.Println(err)
 	} else {
@@ -30,7 +30,7 @@ var iamaResponseRoundTripCases = []IamaResponse{
 // IamaResponse.
 func TestParseIamaResponse_roundTrip(t *testing.T) {
 	for _, c := range iamaResponseRoundTripCases {
-		m := c.Message(msgproto.TagBcast)
+		m := c.Message(message.TagBcast)
 
 		if got, err := ParseIamaResponse(m); err != nil {
 			t.Errorf("parse error: %v", err)
@@ -52,7 +52,7 @@ func TestParseIamaResponse_wordError(t *testing.T) {
 	}
 
 	for _, word := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, word).AddArgs("test")
+		m := message.New(message.TagBcast, word).AddArgs("test")
 
 		_, err := ParseIamaResponse(m)
 		testParserWordError(t, err, RsIama, word)
@@ -67,7 +67,7 @@ func TestParseIamaResponse_arityErrors(t *testing.T) {
 	}
 
 	for _, args := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, RsIama).AddArgs(args...)
+		m := message.New(message.TagBcast, RsIama).AddArgs(args...)
 
 		_, err := ParseIamaResponse(m)
 		testArgUnpackError(t, "ParseIamaResponse", 1, len(args), err)

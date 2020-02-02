@@ -1,15 +1,15 @@
-package corecmd
+package core
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 // ExampleParseOhaiResponse is a testable example for ParseOhaiResponse.
 func ExampleParseOhaiResponse() {
-	m := msgproto.NewMessage(msgproto.TagBcast, RsOhai).AddArgs("test-0.2.0", "example-42.0.0")
+	m := message.New(message.TagBcast, RsOhai).AddArgs("test-0.2.0", "example-42.0.0")
 	if o, err := ParseOhaiResponse(m); err != nil {
 		fmt.Println(err)
 	} else {
@@ -37,7 +37,7 @@ var ohaiResponseRoundTripCases = []OhaiResponse{
 // OhaiResponse.
 func TestParseOhaiResponse_roundTrip(t *testing.T) {
 	for _, c := range ohaiResponseRoundTripCases {
-		m := c.Message(msgproto.TagBcast)
+		m := c.Message(message.TagBcast)
 
 		if got, err := ParseOhaiResponse(m); err != nil {
 			t.Errorf("parse error: %v", err)
@@ -61,7 +61,7 @@ func TestParseOhaiResponse_wordError(t *testing.T) {
 	}
 
 	for _, word := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, word).AddArgs("bifrost-0.3.9", "bigboy-4.8.8.4")
+		m := message.New(message.TagBcast, word).AddArgs("bifrost-0.3.9", "bigboy-4.8.8.4")
 
 		_, err := ParseOhaiResponse(m)
 		testParserWordError(t, err, RsOhai, word)
@@ -77,7 +77,7 @@ func TestParseOhaiResponse_arityErrors(t *testing.T) {
 	}
 
 	for _, args := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, RsOhai).AddArgs(args...)
+		m := message.New(message.TagBcast, RsOhai).AddArgs(args...)
 
 		_, err := ParseOhaiResponse(m)
 		testArgUnpackError(t, "ParseOhaiResponse", 2, len(args), err)

@@ -1,9 +1,9 @@
-package corecmd
+package core
 
-// File corecmd/ohai.go describes parsing and emitting routines for the OHAI core request.
+// File core/ohai.go describes parsing and emitting routines for the OHAI core request.
 
 import (
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 const (
@@ -23,12 +23,12 @@ type OhaiResponse struct {
 }
 
 // Message converts an OhaiResponse into an OHAI message with tag tag.
-func (o *OhaiResponse) Message(tag string) *msgproto.Message {
-	return msgproto.NewMessage(tag, RsOhai).AddArgs(o.ProtocolVer, o.ServerVer)
+func (o *OhaiResponse) Message(tag string) *message.Message {
+	return message.New(tag, RsOhai).AddArgs(o.ProtocolVer, o.ServerVer)
 }
 
 // ParseOhaiResponse tries to parse an arbitrary message as an OHAI response.
-func ParseOhaiResponse(m *msgproto.Message) (resp *OhaiResponse, err error) {
+func ParseOhaiResponse(m *message.Message) (resp *OhaiResponse, err error) {
 	if err = CheckWord(RsOhai, m); err != nil {
 		return nil, err
 	}

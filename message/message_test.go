@@ -1,4 +1,4 @@
-package msgproto
+package message
 
 import (
 	"testing"
@@ -13,32 +13,32 @@ func TestMessage_WordAndTag(t *testing.T) {
 		// Empty request
 		{
 			[]string{"x", "write"},
-			NewMessage("x", "write"),
+			New("x", "write"),
 		},
 		// Request with one argument
 		{
 			[]string{"y", "read", "/control/state"},
-			NewMessage("y", "read").AddArgs("/control/state"),
+			New("y", "read").AddArgs("/control/state"),
 		},
 		// Request with multiple arguments
 		{
 			[]string{"z", "write", "/player/time", "0"},
-			NewMessage("z", "write").AddArgs("/player/time", "0"),
+			New("z", "write").AddArgs("/player/time", "0"),
 		},
 		// Empty response
 		{
 			[]string{"!", "RES"},
-			NewMessage(TagBcast, "RES"),
+			New(TagBcast, "RES"),
 		},
 		// Response with one argument
 		{
 			[]string{"!", "OHAI", "playd 1.0.0"},
-			NewMessage(TagBcast, "OHAI").AddArgs("playd 1.0.0"),
+			New(TagBcast, "OHAI").AddArgs("playd 1.0.0"),
 		},
 		// Response with multiple argument
 		{
 			[]string{"x", "ACK", "int", "OK", "1337"},
-			NewMessage("x", RsAck).AddArgs("int", "OK", "1337"),
+			New("x", "ACK").AddArgs("int", "OK", "1337"),
 		},
 	}
 
@@ -50,7 +50,7 @@ func TestMessage_WordAndTag(t *testing.T) {
 			t.Errorf("Word() == %q, expected %q", c.msg.Word(), c.words[1])
 		}
 
-		got, err := LineToMessage(c.words)
+		got, err := NewFromLine(c.words)
 		if err != nil {
 			t.Errorf("unexpected error with: %q", got)
 		} else if !reflect.DeepEqual(got, c.msg) {
@@ -61,7 +61,7 @@ func TestMessage_WordAndTag(t *testing.T) {
 
 func TestMessage_Args(t *testing.T) {
 	args := []string{"bibbity", "bobbity", "boo"}
-	msg := NewMessage("spelt", "flax").AddArgs(args...)
+	msg := New("spelt", "flax").AddArgs(args...)
 
 	// Bounds checking
 	for _, i := range []int{-1, len(args)} {

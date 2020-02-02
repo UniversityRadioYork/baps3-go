@@ -1,4 +1,4 @@
-package msgproto
+package message
 
 import (
 	"bytes"
@@ -7,18 +7,7 @@ import (
 	"unicode"
 )
 
-const (
-	// Standard Bifrost message word constants.
-
-	// - Requests
-
-	// - Responses
-
-	// RsAck denotes a message with the 'ACK' response.
-	RsAck string = "ACK"
-)
-
-// Message is a structure representing a full BAPS3 message.
+// Message is a structure representing a full Bifrost message.
 // It is comprised of a string tag, a string word, and zero or
 // more string arguments.
 type Message struct {
@@ -27,9 +16,9 @@ type Message struct {
 	args []string
 }
 
-// NewMessage creates and returns a new Message with the given tag and message word.
+// New creates and returns a new Message with the given tag and message word.
 // The message will initially have no arguments; use AddArg to add arguments.
-func NewMessage(tag, word string) *Message {
+func New(tag, word string) *Message {
 	return &Message{
 		tag:  tag,
 		word: word,
@@ -123,12 +112,12 @@ func (m *Message) String() string {
 	return buf.String()
 }
 
-// LineToMessage constructs a Message struct from a line of word-strings.
-func LineToMessage(line []string) (*Message, error) {
+// NewFromLine constructs a Message struct from a line of word-strings.
+func NewFromLine(line []string) (*Message, error) {
 	if len(line) < 2 {
 		return nil, fmt.Errorf("insufficient words")
 	}
 
-	msg := NewMessage(line[0], line[1]).AddArgs(line[2:]...)
+	msg := New(line[0], line[1]).AddArgs(line[2:]...)
 	return msg, nil
 }

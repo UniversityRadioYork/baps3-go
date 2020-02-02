@@ -1,16 +1,16 @@
-package corecmd
+package core
 
 import (
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 // ExampleOneArg is a testable example for OneArg.
 func ExampleOneArg() {
-	m := msgproto.NewMessage("foo", "bar").AddArgs("baz")
+	m := message.New("foo", "bar").AddArgs("baz")
 	if arg, err := OneArg(m); err != nil {
 		fmt.Println("error:", err)
 	} else {
@@ -23,7 +23,7 @@ func ExampleOneArg() {
 
 // ExampleTwoArgs is a testable example for TwoArgs.
 func ExampleTwoArgs() {
-	m := msgproto.NewMessage("foo", "bar").AddArgs("baz", "barbaz")
+	m := message.New("foo", "bar").AddArgs("baz", "barbaz")
 	if arg1, arg2, err := TwoArgs(m); err != nil {
 		fmt.Println("error:", err)
 	} else {
@@ -77,7 +77,7 @@ func TestArityError_Error(t *testing.T) {
 // TestOneArg_error exercises OneArg's error handling.
 func TestOneArg_error(t *testing.T) {
 	for _, args := range oneArgErrorCases {
-		m := msgproto.NewMessage(msgproto.TagBcast, "YEET").AddArgs(args...)
+		m := message.New(message.TagBcast, "YEET").AddArgs(args...)
 
 		if arg, err := OneArg(m); arg != "" {
 			t.Errorf("non-empty return from bad OneArg: %q", arg)
@@ -90,7 +90,7 @@ func TestOneArg_error(t *testing.T) {
 // TestTwoArgs_error exercises TwoArgs's error handling.
 func TestTwoArgs_error(t *testing.T) {
 	for _, args := range twoArgsErrorCases {
-		m := msgproto.NewMessage(msgproto.TagBcast, "YEET").AddArgs(args...)
+		m := message.New(message.TagBcast, "YEET").AddArgs(args...)
 
 		if arg1, arg2, err := TwoArgs(m); arg1 != "" {
 			t.Errorf("non-empty first return from bad TwoArgs: %q", arg1)

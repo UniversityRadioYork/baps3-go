@@ -1,4 +1,4 @@
-package msgproto
+package message
 
 import (
 	"io"

@@ -1,4 +1,4 @@
-package msgproto
+package message
 
 // File test_helpers.go contains helper functions for testing parts of the Bifrost message protocol.
 

@@ -1,8 +1,8 @@
-package corecmd
+package core
 
-import "github.com/UniversityRadioYork/bifrost-go/msgproto"
+import "github.com/UniversityRadioYork/bifrost-go/message"
 
-// File corecmd/iama.go describes parsing and emitting routines for the IAMA core request.
+// File core/iama.go describes parsing and emitting routines for the IAMA core request.
 
 const (
 	// RsIama is the Bifrost response word IAMA.
@@ -16,12 +16,12 @@ type IamaResponse struct {
 }
 
 // Message converts an AckResponse into an IAMA message with tag tag.
-func (a *IamaResponse) Message(tag string) *msgproto.Message {
-	return msgproto.NewMessage(tag, RsIama).AddArgs(a.Role)
+func (a *IamaResponse) Message(tag string) *message.Message {
+	return message.New(tag, RsIama).AddArgs(a.Role)
 }
 
 // ParseIamaResponse tries to parse an arbitrary message as an IAMA response.
-func ParseIamaResponse(m *msgproto.Message) (*IamaResponse, error) {
+func ParseIamaResponse(m *message.Message) (*IamaResponse, error) {
 	var err error
 	if err = CheckWord(RsIama, m); err != nil {
 		return nil, err

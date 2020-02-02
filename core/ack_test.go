@@ -1,11 +1,11 @@
-package corecmd
+package core
 
 import (
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/UniversityRadioYork/bifrost-go/msgproto"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 // ExampleErrorAck is a testable example for ErrorAck.
@@ -22,7 +22,7 @@ func ExampleErrorAck() {
 
 // ExampleParseAckResponse is a testable example for ParseAckResponse.
 func ExampleParseAckResponse() {
-	m := msgproto.NewMessage(msgproto.TagBcast, RsAck).AddArgs(WordWhat, "description here")
+	m := message.New(message.TagBcast, RsAck).AddArgs(WordWhat, "description here")
 	if ack, err := ParseAckResponse(m); err != nil {
 		fmt.Println(err)
 	} else {
@@ -38,12 +38,12 @@ func ExampleParseAckResponse() {
 var ackResponseMessageCases = []struct {
 	input AckResponse
 	tag   string
-	want  *msgproto.Message
+	want  *message.Message
 }{
 	// Making sure AckOk is what we think it is.
 	{AckOk,
-		msgproto.TagBcast,
-		msgproto.NewMessage(msgproto.TagBcast, RsAck).AddArgs(WordOk, OkDescription),
+		message.TagBcast,
+		message.New(message.TagBcast, RsAck).AddArgs(WordOk, OkDescription),
 	},
 	// Testing a WHAT error.
 	{
@@ -51,8 +51,8 @@ var ackResponseMessageCases = []struct {
 			Status:      StatusWhat,
 			Description: "u wot, m8?",
 		},
-		msgproto.TagUnknown,
-		msgproto.NewMessage(msgproto.TagUnknown, RsAck).AddArgs(WordWhat, "u wot, m8?"),
+		message.TagUnknown,
+		message.New(message.TagUnknown, RsAck).AddArgs(WordWhat, "u wot, m8?"),
 	},
 	// Testing a FAIL error.
 	{
@@ -61,7 +61,7 @@ var ackResponseMessageCases = []struct {
 			Description: "computer says no",
 		},
 		"f00f",
-		msgproto.NewMessage("f00f", RsAck).AddArgs(WordFail, "computer says no"),
+		message.New("f00f", RsAck).AddArgs(WordFail, "computer says no"),
 	},
 }
 
@@ -97,7 +97,7 @@ func TestAckResponse_Message(t *testing.T) {
 	for _, c := range ackResponseMessageCases {
 		got := c.input.Message(c.tag)
 		gotStr := fmt.Sprintf("(%q).Message(%s)", c.input, c.tag)
-		msgproto.AssertMessagesEqual(t, gotStr, got, c.want)
+		message.AssertMessagesEqual(t, gotStr, got, c.want)
 	}
 }
 
@@ -105,7 +105,7 @@ func TestAckResponse_Message(t *testing.T) {
 // AckResponse.
 func TestParseAckResponse_roundTrip(t *testing.T) {
 	for _, c := range ackResponseRoundTripCases {
-		m := c.Message(msgproto.TagBcast)
+		m := c.Message(message.TagBcast)
 
 		if got, err := ParseAckResponse(m); err != nil {
 			t.Errorf("parse error: %v", err)
@@ -129,7 +129,7 @@ func TestParseAckResponse_wordError(t *testing.T) {
 	}
 
 	for _, word := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, word).AddArgs(WordOk, "success")
+		m := message.New(message.TagBcast, word).AddArgs(WordOk, "success")
 
 		_, err := ParseAckResponse(m)
 		testParserWordError(t, err, RsAck, word)
@@ -145,7 +145,7 @@ func TestParseAckResponse_arityErrors(t *testing.T) {
 	}
 
 	for _, args := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, RsAck).AddArgs(args...)
+		m := message.New(message.TagBcast, RsAck).AddArgs(args...)
 
 		_, err := ParseAckResponse(m)
 		testArgUnpackError(t, "ParseAckResponse", 2, len(args), err)
@@ -156,7 +156,7 @@ func TestParseAckResponse_arityErrors(t *testing.T) {
 func TestParseAckResponse_statusErrors(t *testing.T) {
 	cases := []string{"", "o", "okay", "wha", "FAILED"}
 	for _, c := range cases {
-		m := msgproto.NewMessage(msgproto.TagBcast, RsAck).AddArgs(c, "success")
+		m := message.New(message.TagBcast, RsAck).AddArgs(c, "success")
 
 		_, err := ParseAckResponse(m)
 		if err == nil {
