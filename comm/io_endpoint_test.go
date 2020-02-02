@@ -1,4 +1,4 @@
-package io
+package comm
 
 import (
 	"bufio"
@@ -117,11 +117,11 @@ func runMockIoClient(t *testing.T, ctx context.Context, wg *sync.WaitGroup) (*En
 // makeMockIoClient constructs an Io with a simulated TCP connection.
 // It returns the client itself, the Bifrost endpoint for inspecting the messages sent and received from the Io,
 // and the fake TCP/IP connection simulating a remote client.
-func makeMockIoClient(t *testing.T) (*Conn, *Endpoint, *mock_conn.End) {
+func makeMockIoClient(t *testing.T) (*IoEndpoint, *Endpoint, *mock_conn.End) {
 	t.Helper()
 
 	conn := mock_conn.NewConn()
 	bfc, bfe := NewEndpointPair()
-	ic := Conn{Io: conn.Server, Bifrost: bfc}
+	ic := IoEndpoint{Io: conn.Server, Endpoint: bfc}
 	return &ic, bfe, conn.Client
 }
