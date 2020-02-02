@@ -9,17 +9,15 @@ import (
 
 // ExampleParseIamaResponse is a testable example for ParseIamaResponse.
 func ExampleParseIamaResponse() {
-	m := message.New(message.TagBcast, RsOhai).AddArgs("test-0.2.0", "example-42.0.0")
-	if o, err := ParseOhaiResponse(m); err != nil {
+	m := message.New(message.TagBcast, RsIama).AddArgs("player/file")
+	if o, err := ParseIamaResponse(m); err != nil {
 		fmt.Println(err)
 	} else {
-		fmt.Println("Protocol:", o.ProtocolVer)
-		fmt.Println("Server:", o.ServerVer)
+		fmt.Println("Role:", o.Role)
 	}
 
 	// Output:
-	// Protocol: test-0.2.0
-	// Server: example-42.0.0
+	// Role: player/file
 }
 
 var iamaResponseRoundTripCases = []IamaResponse{
