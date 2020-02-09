@@ -3,6 +3,7 @@ package message
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"testing"
 )
 
@@ -170,7 +171,7 @@ func TestReaderTokeniser(t *testing.T) {
 
 	for _, c := range cases {
 		br := bytes.NewReader([]byte(c.in))
-		tok := NewReaderTokeniser(br)
+		tok := NewReader(ioutil.NopCloser(br))
 
 		var (
 			got  [][]string

@@ -2,9 +2,10 @@ package comm
 
 import (
 	"context"
+	"net"
+
 	"github.com/UniversityRadioYork/bifrost-go/core"
 	"github.com/UniversityRadioYork/bifrost-go/message"
-	"net"
 )
 
 // Client is a wrapper around an IoEndpoint that stores various pieces of information about a Bifrost server.

@@ -1,10 +1,11 @@
 package comm
 
 import (
-	"github.com/UniversityRadioYork/bifrost-go/core"
-	"github.com/UniversityRadioYork/bifrost-go/message"
 	"reflect"
 	"testing"
+
+	"github.com/UniversityRadioYork/bifrost-go/core"
+	"github.com/UniversityRadioYork/bifrost-go/message"
 )
 
 var exampleMessageTable = []struct {

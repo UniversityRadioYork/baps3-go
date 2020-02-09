@@ -26,7 +26,7 @@ type Endpoint struct {
 // ok to do this manually using the channels themselves.
 func (e *Endpoint) Recv(ctx context.Context) (*message.Message, error) {
 	select {
-	case r := <- e.Rx:
+	case r := <-e.Rx:
 		return &r, nil
 	case <-ctx.Done():
 	}

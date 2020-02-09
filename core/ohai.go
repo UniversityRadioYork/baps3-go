@@ -23,7 +23,7 @@ type OhaiResponse struct {
 }
 
 // Message converts an OhaiResponse into an OHAI message with tag tag.
-func (o *OhaiResponse) Message(tag string) *message.Message {
+func (o OhaiResponse) Message(tag string) *message.Message {
 	return message.New(tag, RsOhai).AddArgs(o.ProtocolVer, o.ServerVer)
 }
 

@@ -1,7 +1,6 @@
 package message
 
 import (
-	"io"
 	"unicode"
 )
 
@@ -18,57 +17,6 @@ const (
 	// double represents "double quoted" parts of a Bifrost message.
 	double
 )
-
-// ReaderTokeniser adapts a Tokeniser to deal with a Reader.
-type ReaderTokeniser struct {
-	tok    *Tokeniser
-	reader io.Reader
-	buf    [4096]byte
-	pos    int
-	max    int
-}
-
-// tokeniseUntilLine drains t's internal buffer into its tokeniser until it runs out or produces a line.
-func (t *ReaderTokeniser) tokeniseUntilLine() (line []string, lineok bool) {
-	var nread int
-	for t.pos < t.max && !lineok {
-		nread, lineok, line = t.tok.TokeniseBytes(t.buf[t.pos:t.max])
-		t.pos += nread
-	}
-	return
-}
-
-// fillFromReader fills t's internal buffer using its reader.
-// It can fail with errors from the reader.
-func (t *ReaderTokeniser) fillFromReader() (err error) {
-	t.pos = 0
-	t.max, err = t.reader.Read(t.buf[:])
-	return
-}
-
-// ReadLine reads a tokenised line from the Reader.
-// ReadLine may return an error if the Reader chokes.
-func (t *ReaderTokeniser) ReadLine() ([]string, error) {
-	for {
-		if line, lineok := t.tokeniseUntilLine(); lineok {
-			return line, nil
-		}
-		if err := t.fillFromReader(); err != nil {
-			return []string{}, err
-		}
-	}
-}
-
-// NewReaderTokeniser creates and returns a new, empty ReaderTokeniser.
-// The ReaderTokeniser will read from the given Reader when Tokenise is called.
-func NewReaderTokeniser(reader io.Reader) *ReaderTokeniser {
-	return &ReaderTokeniser{
-		tok:    NewTokeniser(),
-		reader: reader,
-		pos:    0,
-		max:    0,
-	}
-}
 
 // Tokeniser holds the state of a Bifrost protocol tokeniser.
 type Tokeniser struct {
@@ -104,20 +52,15 @@ func (t *Tokeniser) endWord() {
 // TokeniseBytes tokenises an array of bytes.
 // It returns the number of bytes read, whether or not it read a line, and the line contents if true.
 func (t *Tokeniser) TokeniseBytes(bs []byte) (nread int, lineok bool, line []string) {
-	nread = 0
-	lineok = false
-
 	if len(bs) == 0 {
-		return
+		return 0, false, nil
 	}
 
-	for i := 0; i < len(bs); i++ {
-		if t.tokeniseByte(bs[i]) {
-			nread = i + 1
-			lineok = true
+	for i, b := range bs {
+		if t.tokeniseByte(b) {
 			line = t.words
 			t.words = []string{}
-			return
+			return i + 1, true, line
 		}
 	}
 

@@ -16,7 +16,7 @@ type IamaResponse struct {
 }
 
 // Message converts an AckResponse into an IAMA message with tag tag.
-func (a *IamaResponse) Message(tag string) *message.Message {
+func (a IamaResponse) Message(tag string) *message.Message {
 	return message.New(tag, RsIama).AddArgs(a.Role)
 }
 

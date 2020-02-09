@@ -30,7 +30,7 @@ var AckOk = AckResponse{
 }
 
 // Message converts an AckResponse into an ACK message with tag tag.
-func (a *AckResponse) Message(tag string) *message.Message {
+func (a AckResponse) Message(tag string) *message.Message {
 	return message.New(tag, RsAck).AddArgs(a.Status.String(), a.Description)
 }
 

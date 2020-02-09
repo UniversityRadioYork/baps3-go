@@ -71,7 +71,7 @@ func (e *IoEndpoint) runRx(ctx context.Context, errCh chan<- error) {
 
 // runTx runs the client's message transmitter loop.
 func (e *IoEndpoint) runTx(ctx context.Context, errCh chan<- error) {
-	r := message.NewReaderTokeniser(e.Io)
+	r := message.NewReader(e.Io)
 
 	for {
 		if err := e.txLine(ctx, r); err != nil {
@@ -81,8 +81,8 @@ func (e *IoEndpoint) runTx(ctx context.Context, errCh chan<- error) {
 	}
 }
 
-// txLine transmits a line from the ReaderTokeniser r
-func (e *IoEndpoint) txLine(ctx context.Context, r *message.ReaderTokeniser) (err error) {
+// txLine transmits a line from the Reader r
+func (e *IoEndpoint) txLine(ctx context.Context, r *message.Reader) (err error) {
 	var line []string
 	if line, err = r.ReadLine(); err != nil {
 		return err
